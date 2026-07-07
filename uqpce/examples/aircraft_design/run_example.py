@@ -5,13 +5,13 @@ from uqpce.mdao.uqpcegroup import UQPCEGroup
 from uqpce.mdao import interface
 
 #Import ExplicitComponents
-from aero import AeroDiscipline
-from WeightsComp import Weights_Struct
-from propAndCost import Propulsion
-from propAndCost import EngineWeight
-from propAndCost import DOC
-from BreguetRangeComp import BreguetRangeComp
-from total_mass_comp import TotalMassComp
+from components.aero import AeroDiscipline
+from components.WeightsComp import Weights_Struct
+from components.propAndCost import Propulsion
+from components.propAndCost import EngineWeight
+from components.propAndCost import DOC
+from components.BreguetRangeComp import BreguetRangeComp
+from components.total_mass_comp import TotalMassComp
 
 ##hi
 

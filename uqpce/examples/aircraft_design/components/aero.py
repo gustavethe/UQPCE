@@ -1,6 +1,6 @@
 import numpy as np
 import openmdao.api as om
-
+#hi
 #dtermined inputs
 #planform area (S)
 # Aspect Ratio (AR)
@@ -16,8 +16,13 @@ import openmdao.api as om
 # LD, CL, CD
 
 from fixed import parameters
+import unittest
+from openmdao.utils.assert_utils import assert_check_partials
 
-class AeroDicipline(om.ExplicitComponent):
+from scipy.special import erfinv, erf
+import matplotlib.pyplot as plt
+
+class AeroDiscipline(om.ExplicitComponent):
 
     def initialize(self):
         self.options.declare('vec_size', types=int)
@@ -45,7 +50,7 @@ class AeroDicipline(om.ExplicitComponent):
 
         #coupled solver inputs? not sure how this will be handled, I assume just 
         #treat like regular input for now?
-        self.add_input('m_total',val=50000.0,units="kg",desc="Total Mass [kg]")
+        self.add_input('m_total',val=50000.0,units="kg",desc="Total Mass [kg]", shape=(n,))
 
         self.add_input('delta_CD0',val=1.0,shape=(n,),desc="placeholder var for drag coeff uncertainty until we figure it out and what not")
         #in future do we replacde with a vector containing points on the normal distribution?
@@ -54,19 +59,22 @@ class AeroDicipline(om.ExplicitComponent):
     #Inputs-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #outputs-start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        self.add_output('CL',0.0,desc="Lift Coefficient of Configuration")
+        self.add_output('CL',0.0,shape=(n,),desc="Lift Coefficient of Configuration")
         self.add_output('CD',0.0,shape=(n,),desc="Drag Coefficient of Configuration")
         self.add_output('LD',0.0,shape=(n,),desc="Lift to Drag Ratio of Configuration")
     #outputs-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     
     def setup_partials(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
+    
     #Sensitivities-start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         self.declare_partials(of="CL",wrt="V",method="exact")
         self.declare_partials(of="CL",wrt="S",method="exact")
         #self.declare_partials(of="CL",wrt="AR",method="exact")
         #des variables^
-        self.declare_partials(of="CL",wrt="m_total",method="exact")
+        self.declare_partials(of="CL",wrt="m_total",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="CL",wrt="rho",method="exact")
         self.declare_partials(of="CL",wrt="g",method="exact")
         #all the rest of CL wrt other inputs are zero by default, so not needed
@@ -75,31 +83,31 @@ class AeroDicipline(om.ExplicitComponent):
         self.declare_partials(of="CD",wrt="V",method="exact")
         self.declare_partials(of="CD",wrt="S",method="exact")
         self.declare_partials(of="CD",wrt="AR",method="exact")
-        self.declare_partials(of="CD",wrt="m_total",method="exact")
+        self.declare_partials(of="CD",wrt="m_total",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="CD",wrt="rho",method="exact")
         self.declare_partials(of="CD",wrt="g",method="exact")
         self.declare_partials(of="CD",wrt="C_D0_base",method="exact")
         self.declare_partials(of="CD",wrt="S_0",method="exact")
         self.declare_partials(of="CD",wrt="e_base",method="exact")
-        self.declare_partials(of="CD",wrt="delta_CD0",method="exact")
-        self.declare_partials(of="CD",wrt="delta_e",method="exact")
+        self.declare_partials(of="CD",wrt="delta_CD0",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="CD",wrt="delta_e",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="CD",wrt="ks_base",method="exact")
-        self.declare_partials(of="CD",wrt="delta_ks",method="exact")
+        self.declare_partials(of="CD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
 
         self.declare_partials(of="LD",wrt="V",method="exact")
         self.declare_partials(of="LD",wrt="S",method="exact")
         self.declare_partials(of="LD",wrt="AR",method="exact")
-        self.declare_partials(of="LD",wrt="m_total",method="exact")
+        self.declare_partials(of="LD",wrt="m_total",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="LD",wrt="rho",method="exact")
         self.declare_partials(of="LD",wrt="g",method="exact")
         self.declare_partials(of="LD",wrt="C_D0_base",method="exact")
         self.declare_partials(of="LD",wrt="S_0",method="exact")
         self.declare_partials(of="LD",wrt="e_base",method="exact")
-        self.declare_partials(of="LD",wrt="delta_CD0",method="exact")
-        self.declare_partials(of="LD",wrt="delta_e",method="exact")
+        self.declare_partials(of="LD",wrt="delta_CD0",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="LD",wrt="delta_e",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="LD",wrt="ks_base",method="exact")
-        self.declare_partials(of="LD",wrt="delta_ks",method="exact")
+        self.declare_partials(of="LD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
        
 
@@ -210,8 +218,26 @@ class AeroDicipline(om.ExplicitComponent):
         partials['LD','ks_base'] = -(CL*dCDdks_base)/(CD**2)
         partials['LD','delta_ks'] = -(CL*dCDddelta_ks)/(CD**2)
 
-import unittest
-from openmdao.utils.assert_utils import assert_check_partials
+
+#function the returns a distribution of input variables on CI
+def distribute_input(CI,base_val,sigma,n_points):
+    mu = 1
+    p_lower = (1-CI)/2 #lower end sample point
+    p_upper = (1 + CI)/2
+
+    p = np.linspace(p_lower,p_upper,n_points)
+
+    delta_vec = erfinv(2*p - 1)*np.sqrt(2)*sigma + mu
+
+    CDF_vec = (1.0/2.0)*erf((delta_vec-mu)/(np.sqrt(2)*sigma)) + 0.5
+
+    u_vec = (delta_vec-mu)/(np.sqrt(2)*sigma)
+
+    PDF_vec = (1.0/(sigma*np.sqrt(2*np.pi)))*np.exp(-(u_vec**2))
+
+    #print(delta_vec)
+
+    return delta_vec*base_val, CDF_vec, PDF_vec
 
 class TestAero(unittest.TestCase):
 
@@ -224,7 +250,7 @@ class TestAero(unittest.TestCase):
         self.prob = om.Problem()
         
         #dummy model to test aero
-        self.prob.model.add_subsystem('Aero',AeroDicipline(),promotes=['*'])
+        self.prob.model.add_subsystem('Aero',AeroDiscipline(),promotes=['*'])
         #promotes makes sure evrything is accesible at self level
         #runs after every, individual, function that starts with test__
         #i guess its used to reset state of object being tested if needed
@@ -293,12 +319,105 @@ class TestAero(unittest.TestCase):
         expected_LoD = CL/expected_CD
         np.testing.assert_allclose(LoD, expected_LoD, rtol=1e-12, atol=1e-12)
 
+
+
+
 def main():
 
-    test = TestAero()
-    test.setUp()
-    test.test_partials()
-    test.test_bahavior()
+    n_p = 5000
+
+    prblm = om.Problem()
+    prblm.model.add_subsystem('Aero',AeroDicipline(vec_size=n_p))
+
+    prblm.setup()
+
+    prblm.set_val('Aero.g', 9.81)
+    prblm.set_val('Aero.rho', 0.38)
+    prblm.set_val('Aero.C_D0_base', parameters['CD0_base'])
+    prblm.set_val('Aero.S_0', parameters['S_naught'])
+    prblm.set_val('Aero.ks_base', parameters['ks_base'])
+    prblm.set_val('Aero.e_base', parameters['e_oswald_base'])
+    prblm.set_val('Aero.S', parameters['S_naught']*0.9)
+    prblm.set_val('Aero.V', parameters['V_ref']) 
+    prblm.set_val('Aero.AR', parameters['AR'])
+    prblm.set_val('Aero.m_total', 80000.0)
+
+    del_e, CDF_e, PDF_e = distribute_input(0.98,1.0,0.05,n_p)
+    del_ks, CDF_ks, PDF_ks = distribute_input(0.98,1.0,0.15,n_p)
+    del_CD0, CDF_CD0, PDF_CD0 = distribute_input(0.98,1.0,0.1,n_p)
+
+
+
+    prblm.set_val('Aero.delta_CD0',del_CD0)
+    prblm.set_val('Aero.delta_ks',del_ks)
+    prblm.set_val('Aero.delta_e',del_e)
+
+    
+
+    prblm.run_model()
+
+    CL = prblm.get_val('Aero.CL')
+
+    CD = prblm.get_val('Aero.CD')
+
+    LoD = prblm.get_val('Aero.LD')
+
+
+    print("Expected Scalar CL:",CL,"\n")
+    print("Expected Vector of L/D values\n",LoD)
+
+
+    plt.rcParams.update({
+        "text.usetex" : True,
+        "font.family" : "serif"
+    })
+
+    figure_e, ax = plt.subplots(2,2)
+
+    ax_pdf_de = ax[0,0]
+    ax_cdf_de = ax[0,1]
+
+    ax_pdf_e = ax[1,0]
+    ax_cdf_e = ax[1,1]
+
+    
+    ax_pdf_de.plot(del_e,PDF_e,label=r"$\mathrm{PDF}(\delta_e)$")
+    ax_pdf_de.legend()
+    ax_pdf_de.set_xlabel(r"$\delta_e$")
+    ax_pdf_de.set_ylabel("Probability Density")
+
+    ax_cdf_de.plot(del_e,CDF_e,label=r"$\mathrm{CDF}(\delta_e)$")
+    ax_cdf_de.legend()
+    ax_cdf_de.set_xlabel(r"$\delta_e$")
+    ax_cdf_de.set_ylabel("Cummulative Probability")
+
+    ax_pdf_e.plot(del_e*parameters['e_oswald_base'],
+                   PDF_e/(parameters['e_oswald_base']),
+                   label=r"$\mathrm{PDF}(e_{\mathrm{oswald}})$")
+    ax_pdf_e.legend()
+    ax_pdf_e.set_xlabel(r"$e_{\mathrm{oswald}}$")
+    ax_pdf_e.set_ylabel("Probability Density")
+
+    ax_cdf_e.plot(del_e*parameters['e_oswald_base'],CDF_e,label=r"$\mathrm{CDF}(e_{\mathrm{oswald}})$")
+    ax_cdf_e.legend()
+    ax_cdf_e.set_xlabel(r"$e_{\mathrm{oswald}}$")
+    ax_cdf_e.set_ylabel("Cummulative Probability")
+
+    #ax_del_e.set_xlim([0,2])
+
+    #plt.hist(del_e*0.8,bins=25)
+
+    plt.show()
+
+   
+
+
+
+
+    
+
+
+
 
 if __name__ == "__main__":
     main()
