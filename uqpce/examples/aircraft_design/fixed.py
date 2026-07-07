@@ -16,14 +16,12 @@ parameters = {
     #determined by inspection using 737-800 values
     "fsys_base": 0.19357,
     "kw_base": 53.0,
-
-
-    "p_base": 5.3,     #1 until further notice...
-    "eta_base": 0.40,       # shitty guesstimate
-    "kv_base": 11.5,        # shitty guesstimate
-    "alpha_base": 0.10,    # shitty guesstimate
-    "beta_base": 0.2,       # shitty guesstimate
-    "ks_base": 2.0e-5,    # SHITIEST guesstimate
+    "p_base": 4.3,     #1 until further notice...
+    "eta_base": 0.360,       # shitty guesstimate
+    "kv_base": 31.5,        # shitty guesstimate
+    "alpha_base": 0.20,    # shitty guesstimate
+    "beta_base": 0.21,       # shitty guesstimate
+    "ks_base": 7.8e-5,    # SHITIEST guesstimate
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #~~revised mass estimates for 737-800 [kg]~~~~~

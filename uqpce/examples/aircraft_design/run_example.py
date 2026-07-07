@@ -13,6 +13,8 @@ from propAndCost import DOC
 from BreguetRangeComp import BreguetRangeComp
 from total_mass_comp import TotalMassComp
 
+##hi
+
 class AeroStruct(om.Group):
     """
     Coupled solver loop with AeroComp, WeightsComp, TotalMassComp, and BreguetRangeComp

@@ -308,8 +308,8 @@ class ExampleMDA(om.Group):
         self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
         self.nonlinear_solver.options['iprint'] = 2
         self.nonlinear_solver.options['maxiter'] = 500
-        self.nonlinear_solver.options['atol'] = 1e-12
-        self.nonlinear_solver.options['rtol'] = 1e-12
+        self.nonlinear_solver.options['atol'] = 1e-10
+        self.nonlinear_solver.options['rtol'] = 1e-10
 
         self.nonlinear_solver.linesearch = om.BoundsEnforceLS()
         self.nonlinear_solver.linesearch.options['bound_enforcement'] = 'scalar'
@@ -528,8 +528,8 @@ def uqpce_main_script():
     plot_uqpce_pretty(prob)
 
 
-    #interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
-    #interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
+    interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
+    interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
 
 def original_main_script():
 
@@ -543,7 +543,7 @@ def original_main_script():
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
     prob.driver.options['maxiter'] = 100
-    prob.driver.options['tol'] = 1e-6
+    prob.driver.options['tol'] = 1e-10
     prob.driver.options['disp'] = True
 
     #prob.model.set_input_defaults('aircraft.DOC.V')
@@ -575,7 +575,7 @@ def original_main_script():
     #plotting_list = eta_kv_sweep(prob,30)
 
 
-    prob.run_model()
+    #prob.run_model()
 
     print('\n~~~~737-800 Design~~~~\n\n')
     print('S:', prob.get_val('S'))
