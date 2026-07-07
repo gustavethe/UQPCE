@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from fixed import parameters
-from model import initialize
+#from model import initialize
 #hi
 
 def p_base_sweep(prob):

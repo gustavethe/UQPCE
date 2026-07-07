@@ -19,8 +19,7 @@ class BreguetRangeComp(om.ExplicitComponent):
 
     def setup(self):
         n = self.options['vec_size']
-        arange = np.arange(n)
-
+       
         self.add_input('V', val = parameters['V_ref'], units='m/s') #design variable
 
         self.add_input('SFC', val = parameters['SFC_ref'], shape=(n,), units='1/s') #vector inputs

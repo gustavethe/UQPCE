@@ -1,6 +1,7 @@
 import openmdao.api as om
 import numpy as np
 import matplotlib.pyplot as plt
+from components import *
 
 from helpers import *
 from sweepers import *
@@ -449,7 +450,7 @@ def uqpce_main_script():
     interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
 
 def main():
-    pass
+    uqpce_main_script()
 
 if __name__ == "__main__":
     main()

@@ -14,6 +14,7 @@ parameters = {
     
     #~~~~~tuning parameters~~~~~~~~~~~~~~~~~~~~~~~~ 
     #determined by inspection using 737-800 values
+    """
     "fsys_base": 0.19357,
     "kw_base": 53.0,
     "p_base": 4.3,     #1 until further notice...
@@ -23,6 +24,17 @@ parameters = {
     "beta_base": 0.21,       # shitty guesstimate
     "ks_base": 7.8e-5,    # SHITIEST guesstimate
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    """
+
+    "fsys_base": -0.028819162235424547,
+    "kw_base":  105.78857378198913,
+    "p_base": 7.529033675833872,     #1 until further notice...
+    "eta_base": 0.4641840834222323,       # shitty guesstimate
+    "kv_base": 41.085658256916716,        # shitty guesstimate
+    "alpha_base": -0.5258823112563431,    # shitty guesstimate
+    "beta_base": 0.38018335486778737,       # shitty guesstimate
+    "ks_base":  0.00023970372729668102,    # SHITIEST guesstimate
+
 
     #~~revised mass estimates for 737-800 [kg]~~~~~
     "m_fuse": 14518,
@@ -31,6 +43,7 @@ parameters = {
     "m_fuel_max": 21000, #GUESS init-val or COMPARE to out-val
     "m_wing" : 6941, #COMPARE to out-val
     "m_eng_ref" : 8602, #from 2 CFM56-7 
+    "m_total" : 50000,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #~~design var initializers based on 737-800~~~~
@@ -48,7 +61,9 @@ parameters = {
     #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     #extra
-    "b" : 34.32 # [meters] 737-800 wing span, use to compare
+    "b" : 34.32, # [meters] 737-800 wing span, use to compare
+    "g" : 9.81,
+    "rho" : 0.38,
 }
 
 optimal = {

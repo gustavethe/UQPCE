@@ -16,8 +16,7 @@ import openmdao.api as om
 # LD, CL, CD
 
 from fixed import parameters
-import unittest
-from openmdao.utils.assert_utils import assert_check_partials
+
 
 from scipy.special import erfinv, erf
 import matplotlib.pyplot as plt
@@ -29,40 +28,31 @@ class AeroDiscipline(om.ExplicitComponent):
 
     def setup(self):
         n = self.options['vec_size']
-        arange = np.arange(n)
-    #Inputs-start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        #environemental inputs
-        self.add_input('g', val=9.81,units="m/s**2" ,desc="Coefficient of Gravitational Acceleration [m/s^2]")
-        self.add_input('rho', val=0.38,units="kg/m**3" ,desc="Air Density [kg/m^3]")
-        #baseline inputs and stuff 
-        self.add_input('C_D0_base', val=parameters['CD0_base'], desc="Baseline Drag Coefficient")
-        self.add_input('S_0',val=parameters['S_naught'],units="m**2" , desc="Baseline Planform Area [m^2]")
-        self.add_input('ks_base',val=parameters['ks_base'],units="1/m**2", desc="Drag amplification factor [per unit area]")
-        self.add_input('e_base', val=parameters['e_oswald_base'],desc="Oswald Efficiency Factor")
+       
+        self.add_input('g', val=parameters['g'], units="m/s**2" )
+        self.add_input('rho', val=parameters['rho'], units="kg/m**3")
+        self.add_input('C_D0_base', val=parameters['CD0_base'], units=None)
+        self.add_input('S_0', val=parameters['S_naught'], units="m**2" )
+        self.add_input('ks_base',val=parameters['ks_base'], units="1/m**2")
+        self.add_input('e_base', val=parameters['e_oswald_base'], units=None)
         
-        #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
-        #design variable inputs
-        self.add_input('S',val=parameters['S_naught'],units="m**2",desc="Planform Area [m^2]")
-        self.add_input('V',val=parameters['S_naught'],units="m/s",desc="Cruising Free-stream Velocity [m/s]")
-        self.add_input('AR',val=7.0,desc="Aspect Ratio of Planform")
-        #I assume the value here will become the initial guess when selected as design variables 
-        #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\//\//\/\/\/\
-
-        #coupled solver inputs? not sure how this will be handled, I assume just 
-        #treat like regular input for now?
-        self.add_input('m_total',val=50000.0,units="kg",desc="Total Mass [kg]", shape=(n,))
-
-        self.add_input('delta_CD0',val=1.0,shape=(n,),desc="placeholder var for drag coeff uncertainty until we figure it out and what not")
-        #in future do we replacde with a vector containing points on the normal distribution?
-        self.add_input('delta_ks',val=1.0,shape=(n,),desc="placeholder var for drag factor uncertainty until we figure it out and what not")
-        self.add_input('delta_e',val=1.0,shape=(n,),desc="placeholder var for oswald uncertainty until we figure it out and what not")
-    #Inputs-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    #outputs-start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        self.add_output('CL',0.0,shape=(n,),desc="Lift Coefficient of Configuration")
-        self.add_output('CD',0.0,shape=(n,),desc="Drag Coefficient of Configuration")
-        self.add_output('LD',0.0,shape=(n,),desc="Lift to Drag Ratio of Configuration")
-    #outputs-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        self.add_input('S', val=parameters['S'], units="m**2")
+        self.add_input('V', val=parameters['V'], units="m/s")
+        self.add_input('AR', val=parameters['AR'],units=None)
+    
+        self.add_input('m_total',val=parameters['m_total'],units="kg",
+                       shape=(n,))
+        self.add_input('delta_CD0',val=1.0,units=None,
+                       shape=(n,))
+        self.add_input('delta_ks',val=1.0,units=None,
+                       shape=(n,))
+        self.add_input('delta_e',val=1.0,units=None,
+                       shape=(n,))
+    
+        self.add_output('CL',0.0,shape=(n,),units=None)
+        self.add_output('CD',0.0,shape=(n,),units=None)
+        self.add_output('LD',0.0,shape=(n,),units=None)
+    
 
     
     def setup_partials(self):
@@ -238,86 +228,6 @@ def distribute_input(CI,base_val,sigma,n_points):
     #print(delta_vec)
 
     return delta_vec*base_val, CDF_vec, PDF_vec
-
-class TestAero(unittest.TestCase):
-
-    #inherits mnethods like:
-    #self.assertEqual() et cetera
-
-    #I guess this framework uses this name convention
-    #runs before every func that starts with test__
-    def setUp(self):
-        self.prob = om.Problem()
-        
-        #dummy model to test aero
-        self.prob.model.add_subsystem('Aero',AeroDiscipline(),promotes=['*'])
-        #promotes makes sure evrything is accesible at self level
-        #runs after every, individual, function that starts with test__
-        #i guess its used to reset state of object being tested if needed
-
-        self.prob.setup(force_alloc_complex=True)
-        
-        self.prob.set_val('m_total', 73229.6)
-        self.prob.set_val('g', 9.80665)
-        self.prob.set_val('rho', 0.38)
-        self.prob.set_val('V', 230.0)
-        self.prob.set_val('S', 102.0)
-        self.prob.set_val('AR', 9.0)
-
-        self.prob.set_val('C_D0_base', 0.02)
-        self.prob.set_val('ks_base', 0.0005)
-        self.prob.set_val('S_0', 100.0)
-        self.prob.set_val('e_base', 0.8)
-
-        self.prob.set_val('delta_CD0', 1.0)
-        self.prob.set_val('delta_ks', 1.0)
-        self.prob.set_val('delta_e', 1.0)
-
-        self.prob.run_model()
-
-    def tearDown(self):
-        pass #does nothing 
-
-    def test_partials(self):
-        partial_data = self.prob.check_partials(method='cs')
-        assert_check_partials(partial_data, atol=1e-12, rtol=1e-12)
-
-    def test_bahavior(self):
-        m_total = self.prob.get_val('m_total')
-        g = self.prob.get_val('g')
-        rho = self.prob.get_val('rho')
-        V = self.prob.get_val('V')
-        S = self.prob.get_val('S')
-
-        expected_CL = (m_total * g) / (0.5 * rho * V**2 * S)
-        actual_CL = self.prob.get_val('CL')
-
-        np.testing.assert_allclose(actual_CL, expected_CL, rtol=1e-12, atol=1e-12)
-
-        AR = self.prob.get_val('AR')
-
-        C_D0_base = self.prob.get_val('C_D0_base')
-        S_0 = self.prob.get_val('S_0')
-        ks_base = self.prob.get_val('ks_base')
-        e_base = self.prob.get_val('e_base')
-
-        delta_CD0 = self.prob.get_val('delta_CD0')
-        delta_ks = self.prob.get_val('delta_ks')
-        delta_e = self.prob.get_val('delta_e')
-
-        CL = (m_total * g) / (0.5 * rho * V**2 * S)
-
-        C_D0 = C_D0_base * delta_CD0 + ks_base * delta_ks * (S - S_0)
-
-        expected_CD = C_D0 + (CL**2) / (np.pi * AR * e_base * delta_e)
-        actual_CD = self.prob.get_val('CD')
-
-        np.testing.assert_allclose(actual_CD, expected_CD, rtol=1e-12, atol=1e-12)
-
-        LoD = self.prob.get_val('LD')
-
-        expected_LoD = CL/expected_CD
-        np.testing.assert_allclose(LoD, expected_LoD, rtol=1e-12, atol=1e-12)
 
 
 

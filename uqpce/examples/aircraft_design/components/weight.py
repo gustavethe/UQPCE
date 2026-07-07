@@ -143,3 +143,59 @@ class Weights_Struct(om.ExplicitComponent):
         partials['m_empty', 'V_ref'] = -(p_base * delta_p) * m_wing / V_ref
 
         partials['m_empty', 'm_fuse'] = 1.0
+
+
+class EngineWeight(om.ExplicitComponent):
+    """
+    Component for "EngineWeightComp" box containing analytical derivatives
+    """
+    def initialize(self):
+        self.options.declare('vec_size', types=int)
+
+    def setup(self):
+        n = self.options['vec_size']
+
+        #Parameters
+        self.add_input('m_eng_ref', units='kg')
+        self.add_input('alpha_base')
+
+        #Global design variables
+        self.add_input('SFC_tech', val=0., desc='SFC technology factor')
+    
+        #Uncertainties
+        self.add_input('delta_alpha', val=1.0, shape=(n,))
+
+        #Output
+        self.add_output('m_engine', units='kg', desc='Engine mass', shape=(n,))
+
+    def setup_partials(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
+        
+        self.declare_partials('m_engine', ['SFC_tech', 'm_eng_ref', 'alpha_base'])
+        
+        self.declare_partials('m_engine', ['delta_alpha'], rows=arange, cols=arange)
+
+    def compute(self, inputs, outputs):
+        """
+        m_engine = m_eng_ref * (1 + alpha_base * delta_alpha * SFC_tech)
+        """
+        SFC_tech = inputs['SFC_tech']
+        m_eng_ref = inputs['m_eng_ref']
+        alpha_base = inputs['alpha_base']
+        delta_alpha = inputs['delta_alpha']
+        
+        outputs['m_engine'] = m_eng_ref * (1 + alpha_base * delta_alpha * SFC_tech)
+    
+    def compute_partials(self, inputs, partials):
+        m_eng_ref = inputs['m_eng_ref']
+        alpha_base = inputs['alpha_base']
+        SFC_tech = inputs['SFC_tech']
+        delta_alpha = inputs['delta_alpha']
+        
+        partials['m_engine', 'SFC_tech'] = m_eng_ref * (alpha_base * delta_alpha)
+
+        partials['m_engine', 'm_eng_ref'] = (1 + alpha_base * delta_alpha * SFC_tech)
+        partials['m_engine', 'alpha_base'] = m_eng_ref * (delta_alpha * SFC_tech)
+
+        partials['m_engine', 'delta_alpha'] = m_eng_ref * (alpha_base * SFC_tech)

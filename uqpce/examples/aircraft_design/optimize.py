@@ -1,6 +1,7 @@
 import openmdao.api as om
 from components import *
-
+from fixed import parameters
+from helpers import *
 class CoupledGroup(om.Group):
 
     def setup(self):
@@ -43,7 +44,7 @@ class CoupledGroup(om.Group):
                            promotes_outputs=['m_fuel'])
 
         
-        self.add_subsystem('DOC', DOC(), promotes_inputs=['V', 'SFC_tech'])
+        self.add_subsystem('DOC', DOC(vec_size=1), promotes_inputs=['V', 'SFC_tech'])
 
         self.connect('m_fuel', 'Range.m_fuel')
         self.connect('Mass.m_total', 'Range.m_total')
@@ -159,7 +160,7 @@ def original_main_script():
     
 
 def main():
-    pass
+    original_main_script()
 
 if __name__ == "__main__":
     main()
