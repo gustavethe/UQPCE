@@ -43,7 +43,7 @@ class AeroDiscipline(om.ExplicitComponent):
         #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
         #design variable inputs
         self.add_input('S',val=parameters['S_naught'],units="m**2",desc="Planform Area [m^2]")
-        self.add_input('V',val=parameters['S_naught'],units="m/s",desc="Cruising Free-stream Velocity [m/s]")
+        self.add_input('V',val=parameters['V_ref'],units="m/s",desc="Cruising Free-stream Velocity [m/s]")
         self.add_input('AR',val=7.0,desc="Aspect Ratio of Planform")
         #I assume the value here will become the initial guess when selected as design variables 
         #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\//\//\/\/\/\
@@ -64,7 +64,6 @@ class AeroDiscipline(om.ExplicitComponent):
         self.add_output('LD',0.0,shape=(n,),desc="Lift to Drag Ratio of Configuration")
     #outputs-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    
     def setup_partials(self):
         n = self.options['vec_size']
         arange = np.arange(n)
@@ -94,7 +93,6 @@ class AeroDiscipline(om.ExplicitComponent):
         self.declare_partials(of="CD",wrt="ks_base",method="exact")
         self.declare_partials(of="CD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
-
         self.declare_partials(of="LD",wrt="V",method="exact")
         self.declare_partials(of="LD",wrt="S",method="exact")
         self.declare_partials(of="LD",wrt="AR",method="exact")
@@ -108,9 +106,6 @@ class AeroDiscipline(om.ExplicitComponent):
         self.declare_partials(of="LD",wrt="delta_e",method="exact", rows=arange, cols=arange)
         self.declare_partials(of="LD",wrt="ks_base",method="exact")
         self.declare_partials(of="LD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
-
-       
-
 
     #Sensitivities-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -126,15 +121,17 @@ class AeroDiscipline(om.ExplicitComponent):
         delta_CD0 = inputs['delta_CD0']
         delta_ks = inputs['delta_ks']
         delta_e = inputs['delta_e']
-
+        m_total = inputs['m_total']
+        V = inputs['V']
+        S = inputs['S']
+        AR = inputs['AR']
 
         #do this \/ double equal thingy to reuse output when needed, this synatx pattern might be useful
         #in compute partials function for chain rule stuff
-        outputs['CL'] = CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V']**2)*inputs['S'])
-        C_D0 = C_D0_base*delta_CD0 + ks_base*delta_ks*(inputs['S']-S_0)     
-        outputs['CD'] = CD = C_D0 + (CL**2) / (np.pi*inputs['AR']*e_base*delta_e)
-        outputs['LD'] = CL/CD
-
+        outputs['CL'] = CL = (m_total * g) / ((1.0/2.0) * rho * (V**2) * S)
+        C_D0 = C_D0_base * delta_CD0 + ks_base * delta_ks * (S-S_0)     
+        outputs['CD'] = CD = C_D0 + (CL**2) / (np.pi * AR * e_base * delta_e)
+        outputs['LD'] = CL / CD
 
     def compute_partials(self, inputs, partials): #I presume inputs and partials are inherited memebers of
         g = inputs['g']
@@ -146,27 +143,31 @@ class AeroDiscipline(om.ExplicitComponent):
         delta_CD0 = inputs['delta_CD0']
         delta_ks = inputs['delta_ks']
         delta_e = inputs['delta_e']
+        m_total = inputs['m_total']
+        V = inputs['V']
+        S = inputs['S']
+        AR = inputs['AR']
 
-        CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V']**2)*inputs['S'])         
-        C_D0 = C_D0_base*delta_CD0 + ks_base*delta_ks*(inputs['S']-S_0) 
-        CD = C_D0 + (CL**2) / (np.pi*inputs['AR']*e_base*delta_e)
+        CL = (m_total * g) / ((1.0/2.0) * rho * (V**2) * S)         
+        C_D0 = C_D0_base * delta_CD0 + ks_base * delta_ks * (S-S_0) 
+        CD = C_D0 + (CL**2) / (np.pi * AR * e_base * delta_e)
                                                   
-        partials['CL','V'] = dCLdV = -2*CL*(1.0/inputs['V'])
-        partials['CL','S'] = dCLdS = -1*CL*(1.0/inputs['S'])
+        partials['CL','V'] = dCLdV = -2 * CL * (1.0/V)
+        partials['CL','S'] = dCLdS = -1 * CL * (1.0/S)
         #partials['CL','AR'] = dCLdAR = 0 #fixed to assume S and AR as independent. span is always 
         #computed from these inputs
         dCLdAR = 0
-        partials['CL','m_total'] = dCLdm = CL/inputs['m_total']
-        partials['CL','rho'] = dCLdrho = -CL/rho
-        partials['CL','g'] = dCLdg = CL/g
+        partials['CL','m_total'] = dCLdm = CL / m_total
+        partials['CL','rho'] = dCLdrho = -CL / rho
+        partials['CL','g'] = dCLdg = CL / g
     
         #ugliness helpers
         dCD_0dV = 0.0
-        dCD_0dS = ks_base*delta_ks
+        dCD_0dS = ks_base * delta_ks
         #b_squared = inputs['AR']*inputs['S']
         dSdAR = 0.0 #fixed to assume S and AR as independent. span is always 
         #computed from these inputs
-        dCD_0dAR = dCD_0dS*dSdAR
+        dCD_0dAR = dCD_0dS * dSdAR
         dARdS = 0.0 #fixed to assume S and AR as independent. span is always 
         #computed from these inputs
         dCD_0dm = 0.0
@@ -174,11 +175,10 @@ class AeroDiscipline(om.ExplicitComponent):
         dCD_0dg = 0.0
         #dARdg = 0.0
         dCD_0dCDbase = delta_CD0
-        dCD_0dS0 = -ks_base*delta_ks
+        dCD_0dS0 = -ks_base * delta_ks
         dCD_0debase = 0.0
         dCD_0ddeltaCD0 = C_D0_base
         dCD_0ddeltae = 0
-
 
         #product rule/quotient rule or whatever u wanna call it helpers
         product_rule_V = 2*CL*dCLdV*(1/inputs['AR']) #+ (CL**2)*(0)
@@ -217,7 +217,6 @@ class AeroDiscipline(om.ExplicitComponent):
         partials['LD','delta_e'] = (0 - CL*dCDddeltae)/(CD**2) 
         partials['LD','ks_base'] = -(CL*dCDdks_base)/(CD**2)
         partials['LD','delta_ks'] = -(CL*dCDddelta_ks)/(CD**2)
-
 
 #function the returns a distribution of input variables on CI
 def distribute_input(CI,base_val,sigma,n_points):
@@ -319,15 +318,12 @@ class TestAero(unittest.TestCase):
         expected_LoD = CL/expected_CD
         np.testing.assert_allclose(LoD, expected_LoD, rtol=1e-12, atol=1e-12)
 
-
-
-
 def main():
 
     n_p = 5000
 
     prblm = om.Problem()
-    prblm.model.add_subsystem('Aero',AeroDicipline(vec_size=n_p))
+    prblm.model.add_subsystem('Aero',AeroDiscipline(vec_size=n_p))
 
     prblm.setup()
 
@@ -346,13 +342,9 @@ def main():
     del_ks, CDF_ks, PDF_ks = distribute_input(0.98,1.0,0.15,n_p)
     del_CD0, CDF_CD0, PDF_CD0 = distribute_input(0.98,1.0,0.1,n_p)
 
-
-
     prblm.set_val('Aero.delta_CD0',del_CD0)
     prblm.set_val('Aero.delta_ks',del_ks)
     prblm.set_val('Aero.delta_e',del_e)
-
-    
 
     prblm.run_model()
 
@@ -362,10 +354,8 @@ def main():
 
     LoD = prblm.get_val('Aero.LD')
 
-
     print("Expected Scalar CL:",CL,"\n")
     print("Expected Vector of L/D values\n",LoD)
-
 
     plt.rcParams.update({
         "text.usetex" : True,
@@ -408,16 +398,6 @@ def main():
     #plt.hist(del_e*0.8,bins=25)
 
     plt.show()
-
-   
-
-
-
-
-    
-
-
-
 
 if __name__ == "__main__":
     main()

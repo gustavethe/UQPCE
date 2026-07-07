@@ -15,7 +15,7 @@ class Propulsion(om.ExplicitComponent):
         self.add_input('SFC_ref', units='1/s', desc="Reference SFC technology factor")
         self.add_input('eta_base')
         self.add_input('kv_base')
-        self.add_input('V_ref', units="m/s", desc="Reference flight speed")
+        self.add_input('V_ref', val=231.5, units="m/s", desc="Reference flight speed")
 
         #Global design variables
         self.add_input('SFC_tech', val=0., desc="SFC technology factor")
@@ -143,11 +143,9 @@ class DOC(om.ExplicitComponent):
         self.add_input('C_eng_ref', units='USD')
         self.add_input('beta_base')
 
-        self.add_input('N_pax', desc="Number of passengers")
-
         #Global design variables
         self.add_input('SFC_tech', val=0., desc='SFC technology factor')
-        self.add_input('V', units='m/s', desc='Cruise speed')
+        self.add_input('V_cruise', units='m/s', desc='Cruise speed')
 
         #Local design variable
         self.add_input('R', units='m', desc='Breguet range', shape=(n,))
@@ -162,25 +160,20 @@ class DOC(om.ExplicitComponent):
         #Output
         self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
 
-        self.add_output('Dpm', desc="DOC/pax*m", shape=(n,))
-
     def setup_partials(self):
         n = self.options['vec_size']
         arange = np.arange(n)
 
-        self.declare_partials('DOC', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
-        self.declare_partials('DOC', ['R', 'm_fuel', 'delta_Cf', 'delta_beta'], rows=arange, cols=arange)
-
-        self.declare_partials('Dpm', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base', 'N_pax', 'R'])
+        self.declare_partials('DOC', ['V_cruise', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
         self.declare_partials('DOC', ['R', 'm_fuel', 'delta_Cf', 'delta_beta'], rows=arange, cols=arange)
 
     def compute(self, inputs, outputs):
         """
-        DOC = Cf_base * delta_Cf * m_fuel + C_time * (R / V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
+        DOC = Cf_base * delta_Cf * m_fuel + C_time * (R / V_cruise) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
         """
 
         SFC_tech = inputs['SFC_tech']
-        V = inputs['V']
+        V_cruise = inputs['V_cruise']
         Cf_base = inputs['Cf_base']
         m_fuel = inputs['m_fuel']
         C_time = inputs['C_time']
@@ -191,15 +184,11 @@ class DOC(om.ExplicitComponent):
         delta_beta = inputs['delta_beta']
         delta_Cf = inputs['delta_Cf']
 
-        N_pax = inputs['N_pax']
-
-        outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-
-        outputs['Dpm'] = DOC / (N_pax * (R/1000))
+        outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V_cruise) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
     
     def compute_partials(self, inputs, partials):
         SFC_tech = inputs['SFC_tech']
-        V = inputs['V']
+        V_cruise = inputs['V_cruise']
         Cf_base = inputs['Cf_base']
         m_fuel = inputs['m_fuel']
         C_time = inputs['C_time']
@@ -210,17 +199,15 @@ class DOC(om.ExplicitComponent):
         delta_Cf = inputs['delta_Cf']
         delta_beta = inputs['delta_beta']
 
-        N_pax = inputs['N_pax']
-
-        DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
+        # DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V_cruise) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
 
         partials['DOC', 'm_fuel'] = Cf_base * delta_Cf
-        partials['DOC', 'R'] = C_time / V
-        partials['DOC', 'V'] = -C_time * (R / V**2)
+        partials['DOC', 'R'] = C_time / V_cruise
+        partials['DOC', 'V_cruise'] = -C_time * (R / V_cruise**2)
         partials['DOC', 'SFC_tech'] = k_acq * C_eng_ref * (beta_base * delta_beta)
 
         partials['DOC', 'Cf_base'] = delta_Cf * m_fuel
-        partials['DOC', 'C_time'] = R / V
+        partials['DOC', 'C_time'] = R / V_cruise
         partials['DOC', 'k_acq'] = C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
         partials['DOC', 'C_eng_ref'] = k_acq * (1 + beta_base * delta_beta * SFC_tech)
         partials['DOC', 'beta_base'] = (k_acq * C_eng_ref) * (delta_beta * SFC_tech)
@@ -228,16 +215,64 @@ class DOC(om.ExplicitComponent):
         partials['DOC', 'delta_Cf'] = Cf_base * m_fuel
         partials['DOC', 'delta_beta'] = (k_acq * C_eng_ref) * (beta_base * SFC_tech)
 
-        partials['Dpm', 'm_fuel'] = partials['DOC', 'm_fuel'] / (N_pax * R)
-        partials['Dpm', 'R'] = -(Cf_base * delta_Cf * m_fuel + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)) / (N_pax * R**2)
-        partials['Dpm', 'V'] = partials['DOC', 'V'] / (N_pax * R)
-        partials['Dpm', 'SFC_tech'] = partials['DOC', 'SFC_tech'] / (N_pax * R)
-        partials['Dpm', 'Cf_base'] = partials['DOC', 'Cf_base'] / (N_pax * R)
-        partials['Dpm', 'C_time'] = partials['DOC', 'C_time'] / (N_pax * R)
-        partials['Dpm', 'k_acq'] = partials['DOC', 'k_acq'] / (N_pax * R)
-        partials['Dpm', 'C_eng_ref'] = partials['DOC', 'C_eng_ref'] / (N_pax * R)
-        partials['Dpm', 'beta_base'] = partials['DOC', 'beta_base'] / (N_pax * R)
-        partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
+        # partials['Dpm', 'm_fuel'] = partials['DOC', 'm_fuel'] / (N_pax * R)
+        # partials['Dpm', 'R'] = -(Cf_base * delta_Cf * m_fuel + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)) / (N_pax * R**2)
+        # partials['Dpm', 'V_cruise'] = partials['DOC', 'V_cruise'] / (N_pax * R)
+        # partials['Dpm', 'SFC_tech'] = partials['DOC', 'SFC_tech'] / (N_pax * R)
+        # partials['Dpm', 'Cf_base'] = partials['DOC', 'Cf_base'] / (N_pax * R)
+        # partials['Dpm', 'C_time'] = partials['DOC', 'C_time'] / (N_pax * R)
+        # partials['Dpm', 'k_acq'] = partials['DOC', 'k_acq'] / (N_pax * R)
+        # partials['Dpm', 'C_eng_ref'] = partials['DOC', 'C_eng_ref'] / (N_pax * R)
+        # partials['Dpm', 'beta_base'] = partials['DOC', 'beta_base'] / (N_pax * R)
+        # partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
 
-        partials['Dpm', 'delta_Cf'] = partials['DOC', 'delta_Cf'] / (N_pax * R)
-        partials['Dpm', 'delta_beta'] = partials['DOC', 'delta_beta'] / (N_pax * R)
+        # partials['Dpm', 'delta_Cf'] = partials['DOC', 'delta_Cf'] / (N_pax * R)
+        # partials['Dpm', 'delta_beta'] = partials['DOC', 'delta_beta'] / (N_pax * R)
+
+class Dpm(om.ExplicitComponent):
+    """
+    Component for objective of minimizing DOC/pax*km
+    """
+    def initialize(self):
+        self.options.declare('vec_size', types=int)
+
+    def setup(self):
+        n = self.options['vec_size']
+
+        #Parameters
+        self.add_input('DOC', units='USD', shape=(n,))
+
+        self.add_input('N_pax', desc="Number of passengers")
+
+        #Local design variable
+        self.add_input('R', units='km', desc='Breguet range', shape=(n,))
+
+        #Output
+        self.add_output('Dpm', desc="DOC/pax*km", shape=(n,))
+
+    def setup_partials(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
+
+        self.declare_partials('Dpm', ['N_pax'])
+        self.declare_partials('Dpm', ['R', 'DOC'], rows=arange, cols=arange)
+
+    def compute(self, inputs, outputs):
+        """
+        Dpm = DOC / (pax * km)
+        """
+
+        N_pax = inputs['N_pax']
+        DOC = inputs['DOC']
+        R = inputs['R']
+
+        outputs['Dpm'] = DOC / (N_pax * R)
+    
+    def compute_partials(self, inputs, partials):
+        N_pax = inputs['N_pax']
+        DOC = inputs['DOC']
+        R = inputs['R']
+
+        partials['Dpm', 'R'] = -(DOC / (N_pax * R**2))
+        partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
+        partials['Dpm', 'DOC'] = 1 / (N_pax * R)
