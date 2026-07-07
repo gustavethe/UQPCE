@@ -327,7 +327,7 @@ def main():
     n_p = 5000
 
     prblm = om.Problem()
-    prblm.model.add_subsystem('Aero',AeroDicipline(vec_size=n_p))
+    prblm.model.add_subsystem('Aero',AeroDiscipline(vec_size=n_p))
 
     prblm.setup()
 
