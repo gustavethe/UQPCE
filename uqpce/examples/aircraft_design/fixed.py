@@ -1,4 +1,3 @@
-#hi
 #737-800 parameters
 #sourced from http://www.b737.org.uk/techspecsdetailed.htm
 parameters = {
@@ -16,8 +15,6 @@ parameters = {
     #determined by inspection using 737-800 values
     "fsys_base": 0.19357,
     "kw_base": 53.0,
-
-
     "p_base": 5.3,     #1 until further notice...
     "eta_base": 0.40,       # shitty guesstimate
     "kv_base": 11.5,        # shitty guesstimate
@@ -36,29 +33,29 @@ parameters = {
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #~~design var initializers based on 737-800~~~~
-    "AR" : 9.45,
-    "S" : 124.58, #same as 737-800 area
-    "V" : 231.5,
-    "SFC_tech" : 0,
+    "AR": 9.45,
+    "S": 124.58, #same as 737-800 area
+    "V": 231.5,
+    "SFC_tech": 0,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #$$$$$COST STUFF$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
     "Cf_base": 0.80,           # cost/kg of fuel
-    "C_time": 2000.0 / 3600.0, # cost/s
+    "C_time": 2000.0, # cost/s
     "k_acq": 0.00122, #highly senssitive but interval seems to shift up with range
     "C_eng_ref": 2.0e7,        # normalized/reference total engine acquisition cost
     #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     #extra
-    "b" : 34.32 # [meters] 737-800 wing span, use to compare
+    "b": 34.32 # [meters] 737-800 wing span, use to compare
 }
 
 optimal = {
-    "CL" : 0.53,
-    "S" : 143.59364805,
-    "AR" : 18.15096907,
-    "V" : 240.88550103,
-    "SFC_tech" : 0.60919866
+    "CL": 0.53,
+    "S": 143.59364805,
+    "AR": 18.15096907,
+    "V": 240.88550103,
+    "SFC_tech": 0.60919866
 }
 
 
