@@ -117,7 +117,7 @@ def initialize_og(prob):
     prob.set_val('aircraft.DOC.C_time', parameters['C_time'])
     prob.set_val('aircraft.DOC.k_acq', parameters['k_acq'])
     prob.set_val('aircraft.DOC.C_eng_ref', parameters['C_eng_ref'])
-    prob.set_val('aircraft.DOC.N_pax', parameters['N_pax'])
+    prob.set_val('aircraft.Dpm.N_pax', parameters['N_pax'])
 
     #~~~~~tuning parameters
         #fraction of total mass comprising 'systems' and stuff
@@ -158,12 +158,15 @@ def plot_uqpce_pretty(prob):
     DOC_var_plus_mu = prob.get_val('DOC:mean_plus_var').item()
     DOC_var = DOC_var_plus_mu - DOC_mu
 
-    dpm_dist = prob.get_val('Dpm:resampled_responses').ravel()
+    """
+       dpm_dist = prob.get_val('Dpm:resampled_responses').ravel()
     Dpm_ci_lower = prob.get_val('Dpm:ci_lower').item()
     Dpm_ci_upper = prob.get_val('Dpm:ci_upper').item()
     Dpm_mu = prob.get_val('Dpm:mean').item()
     Dpm_var_plus_mu = prob.get_val('Dpm:mean_plus_var').item()
     Dpm_var = Dpm_var_plus_mu - Dpm_mu
+    """
+ 
 
     m_fuel_dist = prob.get_val('m_fuel:resampled_responses').ravel()
     m_fuel_ci_lower = prob.get_val('m_fuel:ci_lower').item()
@@ -220,25 +223,19 @@ def plot_uqpce_pretty(prob):
         "font.family" : "serif"
     })
 
-    fig, ax = plt.subplots(2)
+    fig, ax = plt.subplots()
 
     #fig.suptitle(r"Direct Operating Cost PDFs")
 
-    ax[0].hist(DOC_dist,bins=50,density=True)
-    ax[0].axvline(DOC_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
-    ax[0].axvline(DOC_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
-    ax[0].set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
-    ax[0].set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
-    ax[0].set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
-    ax[0].legend()
+    ax.hist(DOC_dist,bins=50,density=True)
+    ax.axvline(DOC_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
+    ax.axvline(DOC_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
+    ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
+    ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
+    ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
+    ax.legend()
 
-    ax[1].hist(dpm_dist,bins=50,density=True)
-    ax[1].axvline(Dpm_ci_lower, color='red', linewidth=2, linestyle=':', label=rf"CI lower $\approx$ {Dpm_ci_lower:.4e}")
-    ax[1].axvline(Dpm_ci_upper, color='red', linewidth=2,linestyle=':',label=rf"CI upper $\approx$ {Dpm_ci_upper:.4e}")
-    ax[1].set_xlabel(r"$\mathrm{DOC}_{\mathrm{pkm}} \ \ [\frac{\mathrm{USD}}{\mathrm{px}\cdot\mathrm{km}}]$",labelpad=15,fontsize=18)
-    ax[1].set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
-    ax[1].set_title(rf"Estimated $\mathrm{{DOC}}_{{\mathrm{{pkm}}}}$ Distribution: $\mu = {Dpm_mu:.4e}, \ \ \sigma^2 = {Dpm_var:.4e}$",fontsize=24)
-    ax[1].legend(loc="best")
+    
 
     fig.subplots_adjust(
     hspace=0.5,  # vertical spacing between rows

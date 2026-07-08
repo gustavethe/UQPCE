@@ -14,21 +14,21 @@ parameters = {
     #"""
     #"fsys_base":0.19,
     #"kw_base": 53,
-    #"p_base" : 7.5443750000000005,
-    #"eta_base" : 0.4393500000352975,
-    #"kv_base" : 71.05144999999999,
-    #"alpha_base" : 0.345000107456725,
-    #"beta_base" : 0.4505499999943445,
-    #"ks_base" : 0.0006910700075464138,
+    "p_base" : 7.5443750000000005,
+    "eta_base" : 0.4393500000352975,
+    "kv_base" : 71.05144999999999,
+    "alpha_base" : 0.345000107456725,
+    "beta_base" : 0.4505499999943445,
+    "ks_base" : 0.0002910700075464138,
     #"""
     "fsys_base": 0.19357,
     "kw_base": 53.0,
-    "p_base": 5.3,     #1 until further notice...
-    "eta_base": 0.40,       # shitty guesstimate
-    "kv_base": 11.5,        # shitty guesstimate
-    "alpha_base": 0.10,    # shitty guesstimate
-    "beta_base": 0.2,       # shitty guesstimate
-    "ks_base": 2.0e-5,    # SHITIEST guesstimate
+    #"p_base": 5.3,     #1 until further notice...
+    #"eta_base": 0.40,       # shitty guesstimate
+    #"kv_base": 11.5,        # shitty guesstimate
+    #"alpha_base": 0.10,    # shitty guesstimate
+    #"beta_base": 0.2,       # shitty guesstimate
+    #"ks_base": 2.0e-5,    # SHITIEST guesstimate
 
     #~~revised mass estimates for 737-800 [kg]~~~~~
     "m_fuse": 14518,
@@ -60,6 +60,7 @@ parameters = {
     "rho" : 0.38,
 }
 
+
 optimal = {
     "CL" : 0.53,
     "S" : 155.12160747,
@@ -68,7 +69,15 @@ optimal = {
     "SFC_tech" : 0.32
 }
 
-
+"""
+optimal = {
+    "CL" : 0.53,
+    "S" : 143.62,
+    "AR" : 18.15,
+    "V" :240.87,
+    "SFC_tech" : 0.608
+}
+"""
 
 
 

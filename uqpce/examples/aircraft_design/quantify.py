@@ -313,12 +313,12 @@ def uqpce_main_script():
             tail='both',
             epistemic_cnt=epistemic_cnt,
             aleatory_cnt=aleatory_cnt,
-            uncert_list=['CL_constraint', 'DOC','Dpm', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+            uncert_list=['CL_constraint', 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
             tanh_omega=1e-3,
-            sample_ref0=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0],
-            sample_ref=[0.1, 5.0e4, 0.01, 1000, 1000, 1000, 1000,0.1,0.1,0.1],
+            sample_ref0=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0],
+            sample_ref=[0.1, 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1],
         ),
-        promotes_inputs=['CL_constraint', 'DOC', 'Dpm', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+        promotes_inputs=['CL_constraint', 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
         promotes_outputs=[
             'CL_constraint:resampled_responses',
             'CL_constraint:ci_lower',
@@ -332,12 +332,6 @@ def uqpce_main_script():
             'DOC:mean',
             'DOC:mean_plus_var',
             
-            'Dpm:resampled_responses',
-            'Dpm:ci_lower',
-            'Dpm:ci_upper',
-            'Dpm:mean',
-            'Dpm:mean_plus_var',
-
             'm_fuel:resampled_responses',
             'm_fuel:ci_lower',
             'm_fuel:ci_upper',
@@ -451,8 +445,8 @@ def uqpce_main_script():
     plot_uqpce_pretty(prob)
 
 
-    interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
-    #interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
+    #interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
+    interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
 
 def main():
     uqpce_main_script()

@@ -99,9 +99,9 @@ class AeroDiscipline(om.ExplicitComponent):
         self.declare_partials(of="LD",wrt="ks_base",method="exact")
         self.declare_partials(of="LD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
-        self.declare_partials(of="WL",wrt="S",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="WL",wrt="S",method="exact")
         self.declare_partials(of="WL",wrt="m_total",method="exact", rows=arange, cols=arange)
-        self.declare_partials(of="WL",wrt="g",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="WL",wrt="g",method="exact")
 
 
     #Sensitivities-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

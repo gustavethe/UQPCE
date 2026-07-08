@@ -50,6 +50,7 @@ class CoupledGroup(om.Group):
 
         
         self.add_subsystem('DOC', DOC(vec_size=1), promotes_inputs=['V', 'SFC_tech'])
+        self.add_subsystem('Dpm', Dpm(vec_size=1))
 
         self.connect('m_fuel', 'Range.m_fuel')
         self.connect('Mass.m_total', 'Range.m_total')
@@ -63,6 +64,8 @@ class CoupledGroup(om.Group):
         self.connect('Mass.m_total', 'Weight.m_total')
         self.connect('Range.R', 'DOC.R')
         self.connect('m_fuel', 'DOC.m_fuel')
+        self.connect('Range.R', 'Dpm.R')
+        self.connect('DOC.DOC', 'Dpm.DOC')
 
         self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
         self.nonlinear_solver.options['iprint'] = 2
@@ -99,7 +102,9 @@ def original_main_script():
     prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
 
     # Declare Objective Function
-    prob.model.add_objective('aircraft.DOC.Dpm', ref=1.0e4)
+    #prob.model.add_objective('aircraft.DOC.DOC', ref=1.0e4)
+    prob.model.add_objective('aircraft.Dpm.Dpm', ref=1.0e-2)
+
 
     prob.model.add_constraint('aircraft.Balance.m_fuel', lower=1000.0, upper=50000.0, ref=16000.0)
     prob.model.add_constraint('aircraft.Aero.CL', lower=0.4, upper=0.53, ref=0.5)
@@ -120,7 +125,7 @@ def original_main_script():
     #plotting_list = eta_kv_sweep(prob,30)
 
 
-    #prob.run_model()
+    prob.run_model()
 
     print('\n~~~~737-800 Design~~~~\n\n')
     print('S:', prob.get_val('S'))
@@ -147,7 +152,7 @@ def original_main_script():
     print('\n~~~~Outputs~~~~\n\n')
     
     print('DOC [$/flight]:', prob.get_val('aircraft.DOC.DOC'))
-    print('Dpm [$/flight/px*km]:', prob.get_val('aircraft.DOC.Dpm'))
+    print('Dpm [$/flight/px*km]:', prob.get_val('aircraft.Dpm.Dpm'))
     print('\nMASSES\n')
     print('m_total:', prob.get_val('aircraft.Mass.m_total'))
     print('m_empty:', prob.get_val('aircraft.Weight.m_empty'))

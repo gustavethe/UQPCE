@@ -1,3 +1,26 @@
+###  UQPCE v1.0.0 Output
+###  Analysis of case: None
+###  Analysis started: 2026-07-08 15:09:02.862874
+###  Analysis finished: 2026-07-08 15:09:19.215307
+###  Total compute time: 0:00:16.352433
+--------------------------------------------------------------------------------
+
+Mean of response 0.045852
+Variance of response 7.268e-07
+Mean error of surrogate 7.0025e-07
+Signal to noise ratio 1.0379
+95.0% Confidence Interval on Response [0.044171 , 0.04753]
+Shapiro-Wilks test statistic is 0.96698, P-value is 0.00086167
+
+Evidence exists that errors are not from a normal distribution
+
+--------------------------------------------------------------------------------
+
+The settings used to generate these results are:
+--------------------------------------------------------------------------------
+
+
+The input file used is:
 Variable 0:
   name: delta_CD0
   distribution: normal
