@@ -11,30 +11,24 @@ parameters = {
     "CD0_base": 0.022,         # clean cruise parasite drag ballpark
     "e_oswald_base": 0.80,     # reasonable
     #~~~~miscelaneous parameters~~~~~~~~~~~~~~~~~~
-    
-    #~~~~~tuning parameters~~~~~~~~~~~~~~~~~~~~~~~~ 
-    #determined by inspection using 737-800 values
-    """
+    #"""
+    #"fsys_base":0.19,
+    #"kw_base": 53,
+    #"p_base" : 7.5443750000000005,
+    #"eta_base" : 0.4393500000352975,
+    #"kv_base" : 71.05144999999999,
+    #"alpha_base" : 0.345000107456725,
+    #"beta_base" : 0.4505499999943445,
+    #"ks_base" : 0.0006910700075464138,
+    #"""
     "fsys_base": 0.19357,
     "kw_base": 53.0,
-    "p_base": 4.3,     #1 until further notice...
-    "eta_base": 0.360,       # shitty guesstimate
-    "kv_base": 31.5,        # shitty guesstimate
-    "alpha_base": 0.20,    # shitty guesstimate
-    "beta_base": 0.21,       # shitty guesstimate
-    "ks_base": 7.8e-5,    # SHITIEST guesstimate
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
-    "fsys_base": -0.028819162235424547,
-    "kw_base":  105.78857378198913,
-    "p_base": 7.529033675833872,     #1 until further notice...
-    "eta_base": 0.4641840834222323,       # shitty guesstimate
-    "kv_base": 41.085658256916716,        # shitty guesstimate
-    "alpha_base": -0.5258823112563431,    # shitty guesstimate
-    "beta_base": 0.38018335486778737,       # shitty guesstimate
-    "ks_base":  0.00023970372729668102,    # SHITIEST guesstimate
-
+    "p_base": 5.3,     #1 until further notice...
+    "eta_base": 0.40,       # shitty guesstimate
+    "kv_base": 11.5,        # shitty guesstimate
+    "alpha_base": 0.10,    # shitty guesstimate
+    "beta_base": 0.2,       # shitty guesstimate
+    "ks_base": 2.0e-5,    # SHITIEST guesstimate
 
     #~~revised mass estimates for 737-800 [kg]~~~~~
     "m_fuse": 14518,
@@ -45,7 +39,7 @@ parameters = {
     "m_eng_ref" : 8602, #from 2 CFM56-7 
     "m_total" : 50000,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    "wing_load" : 5905,
     #~~design var initializers based on 737-800~~~~
     "AR" : 9.45,
     "S" : 124.58, #same as 737-800 area
@@ -68,10 +62,10 @@ parameters = {
 
 optimal = {
     "CL" : 0.53,
-    "S" : 143.59364805,
-    "AR" : 18.15096907,
-    "V" : 240.88550103,
-    "SFC_tech" : 0.60919866
+    "S" : 155.12160747,
+    "AR" : 20.37,
+    "V" :231.5017985,
+    "SFC_tech" : 0.32
 }
 
 

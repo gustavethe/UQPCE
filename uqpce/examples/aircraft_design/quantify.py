@@ -1,7 +1,12 @@
 import openmdao.api as om
 import numpy as np
 import matplotlib.pyplot as plt
-from components import *
+from objective import *
+from BreguetRangeComp import *
+from aero import *
+from total_mass_comp import *
+from propAndCost import *
+from weight import *
 
 from helpers import *
 from sweepers import *
@@ -447,7 +452,7 @@ def uqpce_main_script():
 
 
     interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
-    interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
+    #interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
 
 def main():
     uqpce_main_script()

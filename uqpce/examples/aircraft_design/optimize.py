@@ -1,5 +1,10 @@
 import openmdao.api as om
-from components import *
+from objective import *
+from BreguetRangeComp import *
+from aero import *
+from total_mass_comp import *
+from propAndCost import *
+from weight import *
 from fixed import parameters
 from helpers import *
 class CoupledGroup(om.Group):
@@ -82,7 +87,7 @@ def original_main_script():
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
     prob.driver.options['maxiter'] = 100
-    prob.driver.options['tol'] = 1e-10
+    prob.driver.options['tol'] = 1e-12
     prob.driver.options['disp'] = True
 
     #prob.model.set_input_defaults('aircraft.DOC.V')
@@ -94,10 +99,11 @@ def original_main_script():
     prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
 
     # Declare Objective Function
-    prob.model.add_objective('aircraft.DOC.DOC', ref=1.0e4)
+    prob.model.add_objective('aircraft.DOC.Dpm', ref=1.0e4)
 
     prob.model.add_constraint('aircraft.Balance.m_fuel', lower=1000.0, upper=50000.0, ref=16000.0)
     prob.model.add_constraint('aircraft.Aero.CL', lower=0.4, upper=0.53, ref=0.5)
+    #prob.model.add_constraint('aircraft.Aero.WL', equals=parameters['wing_load'],ref=1000)
 
     prob.setup()
 
@@ -141,6 +147,7 @@ def original_main_script():
     print('\n~~~~Outputs~~~~\n\n')
     
     print('DOC [$/flight]:', prob.get_val('aircraft.DOC.DOC'))
+    print('Dpm [$/flight/px*km]:', prob.get_val('aircraft.DOC.Dpm'))
     print('\nMASSES\n')
     print('m_total:', prob.get_val('aircraft.Mass.m_total'))
     print('m_empty:', prob.get_val('aircraft.Weight.m_empty'))

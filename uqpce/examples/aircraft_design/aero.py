@@ -52,7 +52,7 @@ class AeroDiscipline(om.ExplicitComponent):
         self.add_output('CL',0.0,shape=(n,),units=None)
         self.add_output('CD',0.0,shape=(n,),units=None)
         self.add_output('LD',0.0,shape=(n,),units=None)
-    
+        self.add_output('WL',0.0,shape=(n,),units=None)
 
     
     def setup_partials(self):
@@ -99,7 +99,9 @@ class AeroDiscipline(om.ExplicitComponent):
         self.declare_partials(of="LD",wrt="ks_base",method="exact")
         self.declare_partials(of="LD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
-       
+        self.declare_partials(of="WL",wrt="S",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="WL",wrt="m_total",method="exact", rows=arange, cols=arange)
+        self.declare_partials(of="WL",wrt="g",method="exact", rows=arange, cols=arange)
 
 
     #Sensitivities-end~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,7 +126,7 @@ class AeroDiscipline(om.ExplicitComponent):
         C_D0 = C_D0_base*delta_CD0 + ks_base*delta_ks*(inputs['S']-S_0)     
         outputs['CD'] = CD = C_D0 + (CL**2) / (np.pi*inputs['AR']*e_base*delta_e)
         outputs['LD'] = CL/CD
-
+        outputs['WL'] = (inputs['m_total']*g) / inputs['S']
 
     def compute_partials(self, inputs, partials): #I presume inputs and partials are inherited memebers of
         g = inputs['g']
@@ -207,6 +209,10 @@ class AeroDiscipline(om.ExplicitComponent):
         partials['LD','delta_e'] = (0 - CL*dCDddeltae)/(CD**2) 
         partials['LD','ks_base'] = -(CL*dCDdks_base)/(CD**2)
         partials['LD','delta_ks'] = -(CL*dCDddelta_ks)/(CD**2)
+
+        partials['WL','S'] = -(inputs['m_total']*g) / (inputs['S']**2)
+        partials['WL','m_total'] = (g) / (inputs['S'])
+        partials['WL','g'] = (inputs['m_total']) / (inputs['S'])
 
 
 #function the returns a distribution of input variables on CI

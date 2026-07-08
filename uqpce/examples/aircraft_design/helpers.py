@@ -245,7 +245,7 @@ def plot_uqpce_pretty(prob):
     wspace=0.3   # horizontal spacing between columns
     )
     
-    
+    """
     fig_mass, ax_mass = plt.subplots(4)
 
     ax_mass[2].hist(m_fuel_dist,bins=50,density=True)
@@ -299,6 +299,7 @@ def plot_uqpce_pretty(prob):
     ax_SFC.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
     ax_SFC.set_title(rf"Estimated $\mathrm{{SFC}}$ Distribution $\mu = {SFC_mu:.4e}, \ \ \sigma^2 = {SFC_var:.4e}$",fontsize=24)
     ax_SFC.legend()
+    """
 
     fig_polar = plt.figure()
     ax_polar = fig_polar.add_subplot(projection='3d')

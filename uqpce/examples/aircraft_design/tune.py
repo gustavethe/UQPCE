@@ -2,15 +2,20 @@ import numpy as np
 from scipy.optimize import minimize
 
 import openmdao.api as om
-from components import *
+
+from objective import *
+from BreguetRangeComp import *
+from aero import *
+from total_mass_comp import *
+from propAndCost import *
+from weight import *
+
 from fixed import parameters
 from helpers import initialize_og
 from optimize import CoupledGroup
 
 
 TUNING_NAMES = [
-    'aircraft.Weight.fsys_base',
-    'aircraft.Weight.kw_base',
     'aircraft.Weight.p_base',
     'aircraft.Prop.eta_base',
     'aircraft.Prop.kv_base',
@@ -79,7 +84,7 @@ def calibration_objective(x):
         ((AR - parameters['AR']) / parameters['AR']) ** 2
         + ((S - parameters['S']) / parameters['S']) ** 2
         + ((V - parameters['V']) / parameters['V']) ** 2
-        + (SFC_tech) ** 2
+        + (SFC_tech-.35) ** 2
     )
 
     print(
@@ -93,8 +98,6 @@ def calibration_objective(x):
 
 def main():
     x0 = np.array([
-        parameters['fsys_base'],
-        parameters['kw_base'],
         parameters['p_base'],
         parameters['eta_base'],
         parameters['kv_base'],
@@ -104,20 +107,18 @@ def main():
     ])
 
     bounds = [
-        (0.05, 0.40),      # fsys_base
-        (10.0, 150.0),     # kw_base
         (0.01, 12.0),       # p_base
-        (0.01, 1.0),        # eta_base
+        (0.1, 0.7),        # eta_base
         (0.01, 60.0),       # kv_base
-        (0.01, 1.0),        # alpha_base
-        (0.01, 1.0),        # beta_base
-        (0.00001, 5.0e-4),     # ks_base
+        (0.1, 0.3),        # alpha_base
+        (0.1, 0.5),        # beta_base
+        (0.00001, 5.0e-3),     # ks_base
     ]
 
     result = minimize(
     calibration_objective,
     x0,
-    method='Nelder-Mead',
+    method='COBYLA',
     options={
         'maxiter': 500,
         'xatol': 1e-4,
