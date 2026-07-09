@@ -4,11 +4,11 @@ from scipy.optimize import minimize
 import openmdao.api as om
 
 from objective import *
-from BreguetRangeComp import *
-from aero import *
-from total_mass_comp import *
-from propAndCost import *
-from weight import *
+from uqpce.examples.aircraft_design.BreguetRangeComp import *
+from uqpce.examples.aircraft_design.aero import *
+from uqpce.examples.aircraft_design.total_mass_comp import *
+from uqpce.examples.aircraft_design.propAndCost import *
+from uqpce.examples.aircraft_design.weight import *
 
 from fixed import parameters
 from helpers import initialize_og
