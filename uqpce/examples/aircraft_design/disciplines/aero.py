@@ -1,21 +1,7 @@
 import numpy as np
 import openmdao.api as om
-#hi
-#dtermined inputs
-#planform area (S)
-# Aspect Ratio (AR)
-# Crusie Speed (V_cruise)
 
-#coupled inputs
-# m_total
-
-#uncertain inputs (aleatory, I think)
-# delta_CD0, delta_ks, delta_e
-
-#outputs 
-# LD, CL, CD
-
-from fixed import parameters
+from fixed import *
 
 
 from scipy.special import erfinv, erf
@@ -33,7 +19,7 @@ class AeroDiscipline(om.ExplicitComponent):
         self.add_input('rho', val=parameters['rho'], units="kg/m**3")
         self.add_input('C_D0_base', val=parameters['CD0_base'], units=None)
         self.add_input('S_0', val=parameters['S_naught'], units="m**2" )
-        self.add_input('ks_base',val=parameters['ks_base'], units="1/m**2")
+        self.add_input('ks_base',val=tuning['ks_base'], units="1/m**2")
         self.add_input('e_base', val=parameters['e_oswald_base'], units=None)
         
         self.add_input('S', val=parameters['S'], units="m**2")

@@ -1,6 +1,6 @@
 import openmdao.api as om 
 import numpy as np
-from fixed import parameters
+from fixed import *
 #hi
 class Weights_Struct(om.ExplicitComponent):
     """
@@ -33,9 +33,9 @@ class Weights_Struct(om.ExplicitComponent):
         self.add_input("delta_fsys", val=1, shape=(n,))
         self.add_input("delta_p", val=1, shape=(n,))
 
-        self.add_input('kw_base', val=parameters['kw_base'])
-        self.add_input('fsys_base', val=parameters['fsys_base'])
-        self.add_input('p_base', val=parameters['p_base'])
+        self.add_input('kw_base', val=tuning['kw_base'])
+        self.add_input('fsys_base', val=tuning['fsys_base'])
+        self.add_input('p_base', val=tuning['p_base'])
         self.add_input('V_ref', val=parameters['V_ref'], units='m/s')
         self.add_input('m_fuse', val=parameters['m_fuse'], units='kg')
 
