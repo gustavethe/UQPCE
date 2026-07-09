@@ -2,6 +2,7 @@ import numpy as np
 import openmdao.api as om
 
 from fixed import *
+from helpers import distribute_input
 
 
 from scipy.special import erfinv, erf
@@ -201,26 +202,6 @@ class AeroDiscipline(om.ExplicitComponent):
         partials['WL','g'] = (inputs['m_total']) / (inputs['S'])
 
 
-#function the returns a distribution of input variables on CI
-def distribute_input(CI,base_val,sigma,n_points):
-    mu = 1
-    p_lower = (1-CI)/2 #lower end sample point
-    p_upper = (1 + CI)/2
-
-    p = np.linspace(p_lower,p_upper,n_points)
-
-    delta_vec = erfinv(2*p - 1)*np.sqrt(2)*sigma + mu
-
-    CDF_vec = (1.0/2.0)*erf((delta_vec-mu)/(np.sqrt(2)*sigma)) + 0.5
-
-    u_vec = (delta_vec-mu)/(np.sqrt(2)*sigma)
-
-    PDF_vec = (1.0/(sigma*np.sqrt(2*np.pi)))*np.exp(-(u_vec**2))
-
-    #print(delta_vec)
-
-    return delta_vec*base_val, CDF_vec, PDF_vec
-
 
 
 
@@ -310,16 +291,6 @@ def main():
     #plt.hist(del_e*0.8,bins=25)
 
     plt.show()
-
-   
-
-
-
-
-    
-
-
-
 
 if __name__ == "__main__":
     main()
