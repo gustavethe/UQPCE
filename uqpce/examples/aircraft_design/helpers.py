@@ -68,24 +68,24 @@ def initialize(prob):
 
     #~~~~~tuning parameters
         #fraction of total mass comprising 'systems' and stuff
-    prob.set_val('MDA.Weight.fsys_base', parameters['fsys_base'])
+    prob.set_val('MDA.Weight.fsys_base', tuning['fsys_base'])
         #wing weight regression/fit tuning parameter
-    prob.set_val('MDA.Weight.kw_base', parameters['kw_base'])
+    prob.set_val('MDA.Weight.kw_base', tuning['kw_base'])
         #off (faster) design velocity wing weight penalty exponent parameter
-    prob.set_val('MDA.Weight.p_base', parameters['p_base'])
+    prob.set_val('MDA.Weight.p_base', tuning['p_base'])
         #tuning paramter to change effect SFC_tech has on changing SFC_ref
-    prob.set_val('MDA.Prop.eta_base', parameters['eta_base'])
+    prob.set_val('MDA.Prop.eta_base', tuning['eta_base'])
         #off design veloicty penalty to increase SFC qudratically about V_ref
-    prob.set_val('MDA.Prop.kv_base', parameters['kv_base'])
+    prob.set_val('MDA.Prop.kv_base', tuning['kv_base'])
         #strength of increase/decrease of amortized engine cost due to SFC_tech
-    prob.set_val('DOC_objective.beta_base', parameters['beta_base'])
+    prob.set_val('DOC_objective.beta_base', tuning['beta_base'])
         #strength of increase/decrease of engine mass due to SFC_tech
-    prob.set_val('MDA.Engine.alpha_base', parameters['alpha_base'])
+    prob.set_val('MDA.Engine.alpha_base', tuning['alpha_base'])
         #pretty hard to estimate this. it represents the sensitivty 
         #of the drag coefficient to changes in planform area linearized 
         #about S_ref. I have no idea what to put for this, but I chose a 
         #small value above. Note units are 1/m**2
-    prob.set_val('MDA.Aero.ks_base', parameters['ks_base'])
+    prob.set_val('MDA.Aero.ks_base', tuning['ks_base'])
 
 def initialize_og(prob):
     prob.set_val('V', parameters['V'])

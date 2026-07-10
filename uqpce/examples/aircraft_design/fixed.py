@@ -1,7 +1,7 @@
 #sourced from http://www.b737.org.uk/techspecsdetailed.htm
 parameters = {
     #~~~~miscelaneous parameters~~~~~~~~~~~~~~~~~~
-    "R_target": 4.6e6,          
+    "R_target": 5.5e6,          
     "N_pax": 189,              
     "SFC_ref": 1.60e-4,        
     "V_ref": 231.5,            
@@ -36,14 +36,14 @@ parameters = {
 optimal = {
     "CL" : 0.53,
     "S" : 155.12160747,
-    "AR" : 20.37,
+    "AR" : 30.37,
     "V" :231.5017985,
     "SFC_tech" : 0.32
 }
 tuning = {  
     "p_base" : 7.5443750000000005,
     "eta_base" : 0.4393500000352975,
-    "kv_base" : 71.05144999999999,
+    "kv_base" : 701.05144999999999,
     "alpha_base" : 0.345000107456725,
     "beta_base" : 0.4505499999943445,
     "ks_base" : 0.0002910700075464138,

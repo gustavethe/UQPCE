@@ -98,27 +98,28 @@ def calibration_objective(x):
 
 def main():
     x0 = np.array([
-        parameters['p_base'],
-        parameters['eta_base'],
-        parameters['kv_base'],
-        parameters['alpha_base'],
-        parameters['beta_base'],
-        parameters['ks_base'],
+        tuning['p_base'],
+        tuning['eta_base'],
+        tuning['kv_base'],
+        tuning['alpha_base'],
+        tuning['beta_base'],
+        tuning['ks_base'],
     ])
 
     bounds = [
         (0.01, 12.0),       # p_base
-        (0.1, 0.7),        # eta_base
-        (0.01, 60.0),       # kv_base
+        (0.1, 0.3),        # eta_base
+        (30, 100.0),       # kv_base
         (0.1, 0.3),        # alpha_base
-        (0.1, 0.5),        # beta_base
-        (0.00001, 5.0e-3),     # ks_base
+        (0.2, 0.5),        # beta_base
+        (0.000001, 5.0e-3),     # ks_base
     ]
 
     result = minimize(
     calibration_objective,
     x0,
     method='COBYLA',
+    bounds=bounds,
     options={
         'maxiter': 500,
         'xatol': 1e-4,

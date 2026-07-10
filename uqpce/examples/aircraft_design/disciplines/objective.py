@@ -35,6 +35,9 @@ class DOC(om.ExplicitComponent):
 
         #Output
         self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
+        self.add_output('DOC_crew', units='USD', desc="Direct operating cost")
+        self.add_output('DOC_engine', units='USD', desc="Direct operating cost", shape=(n,))
+        self.add_output('DOC_engine_tech', units='USD', desc="Direct operating cost", shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']
@@ -61,7 +64,12 @@ class DOC(om.ExplicitComponent):
         delta_Cf = inputs['delta_Cf']
 
         outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-    
+        outputs['DOC_mfuel'] =  Cf_base * delta_Cf * m_fuel
+        outputs['DOC_crew']=C_time * (R/V)
+        outputs['DOC_engine']=k_acq * C_eng_ref
+        outputs['DOC_engine_tech'] = k_acq * C_eng_ref*beta_base * delta_beta * SFC_tech
+        
+
     def compute_partials(self, inputs, partials):
         SFC_tech = inputs['SFC_tech']
         V = inputs['V']
