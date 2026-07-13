@@ -135,10 +135,10 @@ def original_main_script():
 
     print('737-800 DOC estimate [$/flight]:', prob.get_val('aircraft.DOC.DOC'))
 
-    prob.run_driver()
+    #prob.run_driver()
 
-    prob.check_totals(of=['aircraft.DOC.DOC'],wrt=['S', 'AR', 'SFC_tech','V'],
-                     compact_print=True, method='fd')
+    #prob.check_totals(of=['aircraft.DOC.DOC'],wrt=['S', 'AR', 'SFC_tech','V'],
+                    # compact_print=True, method='fd')
 
     print('\n~~~~Optimized Design~~~~\n\n')
     print('S:', prob.get_val('S'))
@@ -167,7 +167,17 @@ def original_main_script():
     print('SFC:', prob.get_val('aircraft.Prop.SFC'))
     print('Reference SFC:', parameters['SFC_ref'])
    
- 
+    
+    print('DOC fraction fuel', ((prob.get_val('aircraft.DOC.DOC_mfuel'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
+
+    print('DOC fraction crew', ((prob.get_val('aircraft.DOC.DOC_crew'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
+
+    #print('DOC fraction engine', ((prob.get_val('aircraft.DOC.DOC_engine'))/(prob.get_val('aircraft.DOC.DOC'))))
+
+    print('DOC fraction engine tech', ((prob.get_val('aircraft.DOC.DOC_engine_tech'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
+
+
+
 
     
 

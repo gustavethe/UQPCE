@@ -35,6 +35,7 @@ class DOC(om.ExplicitComponent):
 
         #Output
         self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
+        self.add_output('DOC_mfuel', units='USD', desc="Direct operating cost", shape=(n,))
         self.add_output('DOC_crew', units='USD', desc="Direct operating cost")
         self.add_output('DOC_engine', units='USD', desc="Direct operating cost", shape=(n,))
         self.add_output('DOC_engine_tech', units='USD', desc="Direct operating cost", shape=(n,))

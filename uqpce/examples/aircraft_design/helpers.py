@@ -88,10 +88,10 @@ def initialize(prob):
     prob.set_val('MDA.Aero.ks_base', tuning['ks_base'])
 
 def initialize_og(prob):
-    prob.set_val('V', parameters['V'])
-    prob.set_val('S', parameters['S'])
-    prob.set_val('AR', parameters['AR'])
-    prob.set_val('SFC_tech', parameters['SFC_tech'])
+    prob.set_val('V', optimal['V'])
+    prob.set_val('S', optimal['S'])
+    prob.set_val('AR', optimal['AR'])
+    prob.set_val('SFC_tech', optimal['SFC_tech'])
 
     # Target range
     prob.set_val('aircraft.Balance.R_target', parameters['R_target'])
