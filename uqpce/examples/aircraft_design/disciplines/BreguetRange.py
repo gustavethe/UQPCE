@@ -3,16 +3,6 @@ import numpy as np
 from fixed import parameters
 #hi
 class BreguetRangeComp(om.ExplicitComponent):
-    """
-    Compute Breguet range from fuel mass
-
-    Inputs:
-    Design Varibale (scalar i think): V_cruise [m/s]
-    Vector inputs (UQ): SFC [1/s], LD [], m_total [kg], m_fuel [kg]
-
-    Outputs:
-    Vector output: R [m]
-    """
 
     def initialize(self):
         self.options.declare('vec_size', types=int)
@@ -20,14 +10,19 @@ class BreguetRangeComp(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
        
-        self.add_input('V', val = parameters['V_ref'], units='m/s') #design variable
+        self.add_input('V', units='m/s') #design variable
 
-        self.add_input('SFC', val = parameters['SFC_ref'], shape=(n,), units='1/s') #vector inputs
-        self.add_input('LD', val = 16, shape=(n,))
-        self.add_input('m_total', val = 50000, shape=(n,), units='kg')
-        self.add_input('m_fuel', val = 10000, units='kg', shape=(n,))
+        self.add_input('SFC',units='1/s',
+                       shape=(n,)) #vector inputs
+        self.add_input('LD',units=None,
+                        shape=(n,))
+        self.add_input('m_total', units='kg',
+                       shape=(n,))
+        self.add_input('m_fuel', units='kg', 
+                       shape=(n,))
 
-        self.add_output('R', val = 1e6, shape=(n,), units='m')
+        self.add_output('R', units='m',
+                        shape=(n,))
 
     def setup_partials(self):
         n= self.options['vec_size']

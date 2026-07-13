@@ -1,9 +1,4 @@
-from objective import *
-from uqpce.examples.aircraft_design.BreguetRangeComp import *
-from uqpce.examples.aircraft_design.aero import *
-from uqpce.examples.aircraft_design.total_mass_comp import *
-from uqpce.examples.aircraft_design.propAndCost import *
-from uqpce.examples.aircraft_design.weight import *
+from disciplines import *
 import openmdao.api as om
 import unittest
 from openmdao.utils.assert_utils import assert_check_partials

@@ -12,16 +12,19 @@ class TotalMassComp(om.ExplicitComponent):
         n = self.options['vec_size']
 
         #Local design variable
-        self.add_input('m_empty', units='kg', desc='Empty mass', shape=(n,))
+        self.add_input('m_empty', units='kg',
+                       shape=(n,))
 
         #Parameter
-        self.add_input('m_payload', units='kg', desc='Payload mass')
+        self.add_input('m_payload', units='kg')
 
         #Solver state
-        self.add_input('m_fuel', units='kg', desc='Fuel mass', shape=(n,))
+        self.add_input('m_fuel', units='kg', 
+                       shape=(n,))
 
         #Output
-        self.add_output('m_total', units='kg', desc='Total mass', shape=(n,))
+        self.add_output('m_total', units='kg',
+                        shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

@@ -20,26 +20,27 @@ class DOC(om.ExplicitComponent):
         self.add_input('beta_base')
 
         #Global design variables
-        self.add_input('SFC_tech', val=0., desc='SFC technology factor')
-        self.add_input('V', units='m/s', desc='Cruise speed')
+        self.add_input('SFC_tech', units=None)
+        self.add_input('V', units='m/s')
 
         #Local design variable
-        self.add_input('R', units='m', desc='Breguet range', shape=(n,))
+        self.add_input('R', units='m', 
+                       shape=(n,))
         
         #Solver state
-        self.add_input('m_fuel', units='kg', desc='Fuel mass', shape=(n,)) 
+        self.add_input('m_fuel', units='kg',
+                        shape=(n,)) 
 
         #Uncertainties
-        self.add_input('delta_Cf', val=1.0, shape=(n,))
-        self.add_input('delta_beta', val=1.0, shape=(n,))
+        self.add_input('delta_Cf',val=np.ones(n),units=None,
+                       shape=(n,))
+        self.add_input('delta_beta',val=np.ones(n), units=None, 
+                       shape=(n,))
 
         #Output
-        self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
-        self.add_output('DOC_mfuel', units='USD', desc="Direct operating cost", shape=(n,))
-        self.add_output('DOC_crew', units='USD', desc="Direct operating cost")
-        self.add_output('DOC_engine', units='USD', desc="Direct operating cost", shape=(n,))
-        self.add_output('DOC_engine_tech', units='USD', desc="Direct operating cost", shape=(n,))
-
+        self.add_output('DOC', units='USD', 
+                         shape=(n,))
+       
     def setup_partials(self):
         n = self.options['vec_size']
         arange = np.arange(n)
@@ -65,10 +66,6 @@ class DOC(om.ExplicitComponent):
         delta_Cf = inputs['delta_Cf']
 
         outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-        outputs['DOC_mfuel'] =  Cf_base * delta_Cf * m_fuel
-        outputs['DOC_crew']=C_time * (R/V)
-        outputs['DOC_engine']=k_acq * C_eng_ref
-        outputs['DOC_engine_tech'] = k_acq * C_eng_ref*beta_base * delta_beta * SFC_tech
         
 
     def compute_partials(self, inputs, partials):
@@ -127,13 +124,14 @@ class Dpm(om.ExplicitComponent):
         #Parameters
         self.add_input('DOC', units='USD', shape=(n,))
 
-        self.add_input('N_pax',val=189, desc="Number of passengers")
+        self.add_input('N_pax')
 
         #Local design variable
-        self.add_input('R', units='km', desc='Breguet range', shape=(n,))
+        self.add_input('R', units='km',
+                        shape=(n,))
 
         #Output
-        self.add_output('Dpm', desc="DOC/pax*km", shape=(n,))
+        self.add_output('Dpm', shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

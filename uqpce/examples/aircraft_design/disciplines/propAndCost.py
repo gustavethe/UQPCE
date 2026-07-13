@@ -12,21 +12,23 @@ class Propulsion(om.ExplicitComponent):
         n = self.options['vec_size']
 
         #Parameters
-        self.add_input('SFC_ref', units='1/s', desc="Reference SFC technology factor")
-        self.add_input('eta_base')
-        self.add_input('kv_base')
-        self.add_input('V_ref', units="m/s", desc="Reference flight speed")
+        self.add_input('SFC_ref', units='1/s')
+        self.add_input('eta_base',units=None)
+        self.add_input('kv_base',units=None)
+        self.add_input('V_ref', units="m/s")
 
-        #Global design variables
-        self.add_input('SFC_tech', val=0., desc="SFC technology factor")
-        self.add_input('V', units='m/s', desc="Cruise speed")
+        self.add_input('SFC_tech', units=None)
+        self.add_input('V', units='m/s')
 
         #Uncertainties
-        self.add_input('delta_eta', val=1.0, shape=(n,))
-        self.add_input('delta_kv', val=1.0, shape=(n,))
+        self.add_input('delta_eta',val=np.ones(n), units=None, 
+                       shape=(n,))
+        self.add_input('delta_kv',val=np.ones(n), units=None, 
+                       shape=(n,))
 
         #Output
-        self.add_output('SFC', units="1/s", desc="Specific fuel consumption", shape=(n,))
+        self.add_output('SFC', units="1/s",
+                         shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

@@ -142,13 +142,13 @@ def initialize_og(prob):
 
 def plot_uqpce_pretty(prob):
 
-    CL_constraint_dist = prob.get_val('CL_constraint:resampled_responses').ravel()
+    CL_constraint_dist = prob.get_val('CL:resampled_responses').ravel()
     print(type(CL_constraint_dist))
     print(np.shape(CL_constraint_dist))
-    CL_constraint_ci_lower = prob.get_val('CL_constraint:ci_lower').item()
-    CL_constraint_ci_upper = prob.get_val('CL_constraint:ci_upper').item()
-    CL_constraint_mu = prob.get_val('CL_constraint:mean').item()
-    CL_constraint_var_plus_mu = prob.get_val('CL_constraint:mean_plus_var').item()
+    CL_constraint_ci_lower = prob.get_val('CL:ci_lower').item()
+    CL_constraint_ci_upper = prob.get_val('CL:ci_upper').item()
+    CL_constraint_mu = prob.get_val('CL:mean').item()
+    CL_constraint_var_plus_mu = prob.get_val('CL:mean_plus_var').item()
     CL_constraint_var = CL_constraint_var_plus_mu - CL_constraint_mu
 
     DOC_dist = prob.get_val('DOC:resampled_responses').ravel()

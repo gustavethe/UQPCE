@@ -16,30 +16,35 @@ class AeroDiscipline(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
        
-        self.add_input('g', val=parameters['g'], units="m/s**2" )
-        self.add_input('rho', val=parameters['rho'], units="kg/m**3")
-        self.add_input('C_D0_base', val=parameters['CD0_base'], units=None)
-        self.add_input('S_0', val=parameters['S_naught'], units="m**2" )
-        self.add_input('ks_base',val=tuning['ks_base'], units="1/m**2")
-        self.add_input('e_base', val=parameters['e_oswald_base'], units=None)
+        self.add_input('g', units="m/s**2" )
+        self.add_input('rho', units="kg/m**3")
+        self.add_input('C_D0_base', units=None)
+        self.add_input('S_0', units="m**2" )
+        self.add_input('ks_base', units="1/m**2")
+        self.add_input('e_base', units=None)
         
-        self.add_input('S', val=parameters['S'], units="m**2")
-        self.add_input('V', val=parameters['V'], units="m/s")
-        self.add_input('AR', val=parameters['AR'],units=None)
+        self.add_input('S',  units="m**2")
+        self.add_input('V', units="m/s")
+        self.add_input('AR', units=None)
     
-        self.add_input('m_total',val=parameters['m_total'],units="kg",
+        self.add_input('m_total',units="kg",
                        shape=(n,))
-        self.add_input('delta_CD0',val=1.0,units=None,
+        
+        self.add_input('delta_CD0',val=np.ones(n),units=None,
                        shape=(n,))
-        self.add_input('delta_ks',val=1.0,units=None,
+        self.add_input('delta_ks',val=np.ones(n),units=None,
                        shape=(n,))
-        self.add_input('delta_e',val=1.0,units=None,
+        self.add_input('delta_e',val=np.ones(n),units=None,
                        shape=(n,))
     
-        self.add_output('CL',0.0,shape=(n,),units=None)
-        self.add_output('CD',0.0,shape=(n,),units=None)
-        self.add_output('LD',0.0,shape=(n,),units=None)
-        self.add_output('WL',0.0,shape=(n,),units=None)
+        self.add_output('CL',units=None,
+                        shape=(n,))
+        self.add_output('CD',units=None,
+                        shape=(n,))
+        self.add_output('LD',units=None,
+                        shape=(n,))
+        self.add_output('WL',units="N/m**2",
+                        shape=(n,))
 
     
     def setup_partials(self):

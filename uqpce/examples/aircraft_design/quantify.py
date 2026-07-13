@@ -1,7 +1,7 @@
 import openmdao.api as om
 import numpy as np
 import matplotlib.pyplot as plt
-from disciplines.objective import *
+#from disciplines.objective import *
 from disciplines.BreguetRange import *
 from disciplines.aero import *
 from disciplines.total_mass_comp import *
@@ -11,36 +11,6 @@ from disciplines.weight import *
 from helpers import *
 from sweepers import *
 
-class AeroConst(om.ExplicitComponent):
-    """
-    Component containing Constraint for component 1
-    Needed now because the constraint must act across entire vector.
-    It would probably work otherwise, but this is more clear
-    """
-
-    def initialize(self):
-        self.options.declare('vec_size', default=1, types=int)
-    
-    def setup(self):
-        n = self.options['vec_size']
-        self.add_input('CL', shape=(n,))
-        self.add_output('CL_constraint', shape=(n,))
-
-
-    def setup_partials(self):
-        n = self.options['vec_size']
-        idx = np.arange(n)
-        self.declare_partials('CL_constraint','CL',rows=idx,cols=idx)
-    
-    def compute(self, inputs, outputs):
-        CL = inputs['CL']
-        CL_target = 0.53
-        outputs['CL_constraint'] = CL_target - CL
-
-
-
-    def compute_partials(self, inputs, partials):
-        partials['CL_constraint','CL'] = -1
 
 class DOC(om.ExplicitComponent):
     """
@@ -66,7 +36,7 @@ class DOC(om.ExplicitComponent):
         self.add_input('V', units='m/s', desc='Cruise speed')
 
         #Local design variable
-        self.add_input('R',shape=(n,), units='km', desc='Breguet range')
+        self.add_input('R',shape=(n,), units='m', desc='Breguet range')
         
         #Solver state
         self.add_input('m_fuel',shape=(n,), units='kg', desc='Fuel mass') 
@@ -78,7 +48,7 @@ class DOC(om.ExplicitComponent):
         #Output
         self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
 
-        self.add_output('Dpm', desc="DOC/pax*km", shape=(n,))
+        #self.add_output('Dpm', desc="DOC/pax*km", shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']
@@ -87,8 +57,8 @@ class DOC(om.ExplicitComponent):
         self.declare_partials('DOC', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
         self.declare_partials('DOC', ['m_fuel', 'R','delta_Cf', 'delta_beta'], rows=idx, cols=idx)
 
-        self.declare_partials('Dpm', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base', 'N_pax'])
-        self.declare_partials('Dpm', ['m_fuel', 'R','delta_Cf', 'delta_beta'], rows=idx, cols=idx)
+        #self.declare_partials('Dpm', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base', 'N_pax'])
+        #self.declare_partials('Dpm', ['m_fuel', 'R','delta_Cf', 'delta_beta'], rows=idx, cols=idx)
 
     def compute(self, inputs, outputs):
         """
@@ -111,7 +81,8 @@ class DOC(om.ExplicitComponent):
 
         outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
 
-        outputs['Dpm'] = DOC / (N_pax * R)
+        #R_km = R/1000
+        #outputs['Dpm'] = DOC / (N_pax * R_km)
     
     def compute_partials(self, inputs, partials):
         SFC_tech = inputs['SFC_tech']
@@ -144,6 +115,8 @@ class DOC(om.ExplicitComponent):
         partials['DOC', 'delta_Cf'] = Cf_base * m_fuel
         partials['DOC', 'delta_beta'] = (k_acq * C_eng_ref) * (beta_base * SFC_tech)
 
+        """
+
         partials['Dpm', 'm_fuel'] = partials['DOC', 'm_fuel'] / (N_pax * R)
         partials['Dpm', 'R'] = -(Cf_base * delta_Cf * m_fuel + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)) / (N_pax * R**2)
         partials['Dpm', 'V'] = partials['DOC', 'V'] / (N_pax * R)
@@ -157,6 +130,9 @@ class DOC(om.ExplicitComponent):
 
         partials['Dpm', 'delta_Cf'] = partials['DOC', 'delta_Cf'] / (N_pax * R)
         partials['Dpm', 'delta_beta'] = partials['DOC', 'delta_beta'] / (N_pax * R)
+        
+        """
+
 
 class ExampleMDA(om.Group):
 
@@ -228,15 +204,18 @@ class ExampleMDA(om.Group):
         self.connect('m_total', 'Weight.m_total')
 
 
-        self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
+        newton = self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
         self.nonlinear_solver.options['iprint'] = 2
         self.nonlinear_solver.options['maxiter'] = 500
-        self.nonlinear_solver.options['atol'] = 1e-10
-        self.nonlinear_solver.options['rtol'] = 1e-10
+        self.nonlinear_solver.options['atol'] = 1e-7
+        self.nonlinear_solver.options['rtol'] = 1e-7
 
-        self.nonlinear_solver.linesearch = om.BoundsEnforceLS()
-        self.nonlinear_solver.linesearch.options['bound_enforcement'] = 'scalar'
-
+        line_search = newton.linesearch = om.ArmijoGoldsteinLS(
+        bound_enforcement='vector',
+        )
+        line_search.options['maxiter'] = 20
+        line_search.options['print_bound_enforce'] = True
+        
         self.linear_solver = om.DirectSolver()
 
 
@@ -281,21 +260,15 @@ def uqpce_main_script():
         promotes_outputs=['m_fuel','m_empty','m_engine','m_total','CL','CD','SFC']
     )
 
-    prob.model.add_subsystem(
-        'CL_constraint', 
-         AeroConst(vec_size=resp_cnt), 
-         promotes_outputs=['CL_constraint']
-    )
 
     prob.model.add_subsystem(
         'DOC_objective', 
         DOC(vec_size=resp_cnt), 
         promotes_inputs=(['V','SFC_tech',
                           'delta_beta','delta_Cf',]), 
-        promotes_outputs=['DOC','Dpm']
+        promotes_outputs=['DOC']
     )
 
-    prob.model.connect('CL','CL_constraint.CL')
 
     prob.model.connect('m_fuel','DOC_objective.m_fuel')
     prob.model.connect('MDA.Range.R','DOC_objective.R')
@@ -313,18 +286,13 @@ def uqpce_main_script():
             tail='both',
             epistemic_cnt=epistemic_cnt,
             aleatory_cnt=aleatory_cnt,
-            uncert_list=['CL_constraint', 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+            uncert_list=['DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
             tanh_omega=1e-3,
-            sample_ref0=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0],
-            sample_ref=[0.1, 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1],
+            sample_ref0=[ 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0],
+            sample_ref=[ 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1],
         ),
-        promotes_inputs=['CL_constraint', 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+        promotes_inputs=[ 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
         promotes_outputs=[
-            'CL_constraint:resampled_responses',
-            'CL_constraint:ci_lower',
-            'CL_constraint:ci_upper',
-            'CL_constraint:mean',
-            'CL_constraint:mean_plus_var',
 
             'DOC:resampled_responses',
             'DOC:ci_lower',
@@ -379,36 +347,10 @@ def uqpce_main_script():
 
  
 
-    """
-    #---------------------------------------------------------------------------
-    #                   Setting up the OpenMDAO Problem
-    #---------------------------------------------------------------------------
+
+    #Assign objective function and constraint in UQPCE formatting
     
-    
-    # Set up driver
-    #prob.driver = om.pyOptSparseDriver(optimizer='SLSQP')
-    #prob.driver.opt_settings['MAXIT'] = 50
-    #prob.driver.opt_settings['ACC'] = 1e-8
-
-    # Initial guesses for aircraft design variables
-    
-
-    # Add design variables and bounds
-    #prob.model.add_design_var('S', lower=80.0, upper=300, ref=100.0)
-    #prob.model.add_design_var('AR', lower=6.0, upper=50, ref=10.0)
-    #prob.model.add_design_var('V', lower=190.0, upper=260.0, ref=230.0)
-    #prob.model.add_design_var('SFC_tech', lower=-1.0, upper=1.0, ref=1.0)
-
-    # Assign objective function and constraint in UQPCE formatting
-    #obj = 'DOC:mean'
-    CL_con = 'CL_constraint:ci_lower'
-
-    #prob.model.add_objective(obj, ref=1.0e4)
-
-    # CL_constraint = CL_target - CL
-    # lower=0 means CL <= CL_target
-    #prob.model.add_constraint(CL_con, equals=0)
-    """
+    #CL_con = 'CL_constraint:ci_lower'
     
 
     prob.model.set_input_defaults('S', val=optimal['S'], units='m**2')
@@ -417,36 +359,120 @@ def uqpce_main_script():
     prob.model.set_input_defaults('SFC_tech', val=optimal['SFC_tech'])
 
 
+    
+
+    
+
+    prob.driver = om.pyOptSparseDriver(
+    optimizer='SLSQP',
+    )
+
+    prob.driver.options['debug_print'] = [
+        'desvars',
+        'objs',
+        'nl_cons',
+    ]
+
+    prob.model.add_design_var(
+        'S',
+        lower=100.0,
+        upper=180.0,
+        ref=124.6,
+    )
+
+    prob.model.add_design_var(
+        'AR',
+        lower=7.0,
+        upper=50.0,
+        ref=9.45,
+    )
+
+    prob.model.add_design_var(
+        'V',
+        lower=200.0,
+        upper=260.0,
+        ref=230.0,
+    )
+
+    prob.model.add_design_var(
+        'SFC_tech',
+        lower=-1.0,
+        upper=1.0,
+        ref=1.0,
+    )
+
+    prob.model.add_objective(
+        'DOC:mean',
+        ref=2.0e4,
+    )
+
+    
+    prob.model.add_constraint(
+        'CL:mean',
+        upper=0.53,
+        ref=0.5,
+    )
+
+
     prob.setup()
 
     initialize(prob)
-
-    
-    interface.set_vals(prob, variables, run_matrix)
+    interface.set_vals(
+    prob,
+    variables,
+    run_matrix,
+)
 
     prob.run_model()
 
-    print('Design Variable S ', prob.get_val('S'))
-    print('Design Variable AR ', prob.get_val('AR'))
-    print('Design Variable V ', prob.get_val('V'))
-    print('Design Variable SFC_tech ', prob.get_val('SFC_tech'))
+    DOC_dist = prob.get_val('DOC:resampled_responses').copy().ravel()
+    DOC_ci_lower = prob.get_val('DOC:ci_lower').copy().item()
+    DOC_ci_upper = prob.get_val('DOC:ci_upper').copy().item()
+    DOC_mu = prob.get_val('DOC:mean').copy().item()
+    DOC_var_plus_mu = prob.get_val('DOC:mean_plus_var').copy().item()
+    DOC_var = DOC_var_plus_mu - DOC_mu
 
-    #print(f'Constraint {CL_con}', prob.get_val(CL_con))
-    #print(f'Objective {obj} is', prob.get_val(obj))
+    prob.check_totals(of=['DOC:mean','CL:mean',
+        'CL:ci_lower',
+        'CL:ci_upper',],wrt=['S', 'AR', 'SFC_tech','V'],
+                      compact_print=True, method='fd')
+    #initialize(prob)
+    prob.run_driver()
 
-    #print('Fuel mass ', prob.get_val('MDA.m_fuel'))
-    print('Range ', prob.get_val('MDA.Range.R'))
-    #print('DOC ', prob.get_val('DOC'))
-    #print('Dpm ', prob.get_val('Dpm'))
+    DOC_opt_dist = prob.get_val('DOC:resampled_responses').ravel()
+    DOC_opt_ci_lower = prob.get_val('DOC:ci_lower').item()
+    DOC_opt_ci_upper = prob.get_val('DOC:ci_upper').item()
+    DOC_opt_mu = prob.get_val('DOC:mean').item()
+    DOC_opt_var_plus_mu = prob.get_val('DOC:mean_plus_var').item()
+    DOC_opt_var = DOC_opt_var_plus_mu - DOC_opt_mu
 
-    print('CL', prob.get_val('MDA.Aero.CL'))
-    print('CD', prob.get_val('MDA.Aero.CD'))
+    
+    fig, ax = plt.subplots()
 
-    plot_uqpce_pretty(prob)
+    #fig.suptitle(r"Direct Operating Cost PDFs")
+
+    ax.hist(DOC_dist,bins=100,density=True)
+    ax.axvline(DOC_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
+    ax.axvline(DOC_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
+    #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
+    #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
+    #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
+    
+    ax.hist(DOC_opt_dist,bins=100,density=True)
+    ax.axvline(DOC_opt_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
+    ax.axvline(DOC_opt_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
+    #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
+    #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
+    #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
+    ax.legend()
 
 
-    #interface.analysis(prob, 'Dpm', 'input.yaml', 'run_matrix_generated.dat')
-    interface.analysis(prob, 'DOC', 'input.yaml', 'run_matrix_generated.dat')
+    plt.show()
+
+
+    
+   
+ 
 
 def main():
     uqpce_main_script()

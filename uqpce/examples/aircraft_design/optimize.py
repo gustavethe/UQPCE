@@ -7,6 +7,10 @@ from disciplines.propAndCost import *
 from disciplines.weight import *
 from fixed import parameters
 from helpers import *
+
+from uqpce.mdao.uqpcegroup import UQPCEGroup
+from uqpce.mdao import interface
+import os
 class CoupledGroup(om.Group):
 
     def setup(self):
@@ -107,7 +111,7 @@ def original_main_script():
 
 
     prob.model.add_constraint('aircraft.Balance.m_fuel', lower=1000.0, upper=50000.0, ref=16000.0)
-    prob.model.add_constraint('aircraft.Aero.CL', lower=0.4, upper=0.53, ref=0.5)
+    prob.model.add_constraint('aircraft.Aero.CL', upper = 0.53, ref=0.1)
     #prob.model.add_constraint('aircraft.Aero.WL', equals=parameters['wing_load'],ref=1000)
 
     prob.setup()
@@ -167,19 +171,6 @@ def original_main_script():
     print('SFC:', prob.get_val('aircraft.Prop.SFC'))
     print('Reference SFC:', parameters['SFC_ref'])
    
-    
-    print('DOC fraction fuel', ((prob.get_val('aircraft.DOC.DOC_mfuel'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
-
-    print('DOC fraction crew', ((prob.get_val('aircraft.DOC.DOC_crew'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
-
-    #print('DOC fraction engine', ((prob.get_val('aircraft.DOC.DOC_engine'))/(prob.get_val('aircraft.DOC.DOC'))))
-
-    print('DOC fraction engine tech', ((prob.get_val('aircraft.DOC.DOC_engine_tech'))/(prob.get_val('aircraft.DOC.DOC')-prob.get_val('aircraft.DOC.DOC_engine'))))
-
-
-
-
-    
 
 def main():
     original_main_script()

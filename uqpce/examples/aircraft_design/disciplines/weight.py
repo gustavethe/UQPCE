@@ -3,44 +3,39 @@ import numpy as np
 from fixed import *
 #hi
 class Weights_Struct(om.ExplicitComponent):
-    """
-    Evaluates the weights & structures for a coupled Breguet range with MDAO
-    
-    Inputs:
-    Design Vars (scalar): S [m^2], AR [-], V [m/s]
-    Vector coupling inputs: m_total [kg], m_engine [kg]
-    Vector uncertain inputs: delta_kw, delta_fsys, delta_p
-    Fixed parameters: kw_base, fsys_base, p_base, V_ref [m/s], m_fuse [kg]
 
-    Outputs:
-    Vectors: m_empty [kg], m_wing [kg]
-
-    """
     def initialize(self):
         self.options.declare('vec_size', types=int)
 
     def setup(self):
         n= self.options['vec_size']
 
-        self.add_input('S', val=parameters['S_naught'], units='m**2')
-        self.add_input('AR', val=parameters['b']**2 / parameters['S_naught'])
-        self.add_input('V', val=parameters['V_ref'], units='m/s')
+        self.add_input('S', units='m**2')
+        self.add_input('AR', units=None)
+        self.add_input('V',units='m/s')
 
-        self.add_input('m_total', val=50000.0, shape=(n,), units='kg')
-        self.add_input('m_engine', val=parameters['m_eng_ref'], shape=(n,), units='kg')
+        self.add_input('m_total',  units='kg',
+                       shape=(n,))
+        self.add_input('m_engine', units='kg', 
+                       shape=(n,),)
 
-        self.add_input("delta_kw", val=1, shape=(n,)) #uncertain variables
-        self.add_input("delta_fsys", val=1, shape=(n,))
-        self.add_input("delta_p", val=1, shape=(n,))
+        self.add_input("delta_kw",val=np.ones(n), units=None, 
+                       shape=(n,)) #uncertain variables
+        self.add_input("delta_fsys",val=np.ones(n), units=None, 
+                       shape=(n,))
+        self.add_input("delta_p",val=np.ones(n), units=None, 
+                       shape=(n,))
 
-        self.add_input('kw_base', val=tuning['kw_base'])
-        self.add_input('fsys_base', val=tuning['fsys_base'])
-        self.add_input('p_base', val=tuning['p_base'])
-        self.add_input('V_ref', val=parameters['V_ref'], units='m/s')
-        self.add_input('m_fuse', val=parameters['m_fuse'], units='kg')
+        self.add_input('kw_base', units=None)
+        self.add_input('fsys_base', units=None)
+        self.add_input('p_base', units=None)
+        self.add_input('V_ref', units='m/s')
+        self.add_input('m_fuse', units='kg')
 
-        self.add_output('m_empty', val=0.0, shape=(n,), units= 'kg')
-        self.add_output('m_wing', val=0.0, shape=(n,), units='kg')
+        self.add_output('m_empty', units= 'kg', 
+                        shape=(n,))
+        self.add_output('m_wing', units='kg', 
+                        shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']
