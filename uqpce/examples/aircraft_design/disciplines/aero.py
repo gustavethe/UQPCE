@@ -8,7 +8,7 @@ from helpers import distribute_input
 from scipy.special import erfinv, erf
 import matplotlib.pyplot as plt
 
-class AeroDiscipline(om.ExplicitComponent):
+class AeroComp(om.ExplicitComponent):
 
     def initialize(self):
         self.options.declare('vec_size', types=int)

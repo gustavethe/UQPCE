@@ -7,17 +7,136 @@ from disciplines.aero import *
 from disciplines.total_mass_comp import *
 from disciplines.propAndCost import *
 from disciplines.weight import *
+from disciplines.objective import *
 
 from helpers import *
 from sweepers import *
 
 
-class DOC(om.ExplicitComponent):
-    """
-    Component for "DOCComp" box containing analytical derivatives
-    """
+
+class CoupledDisciplines(om.Group):
+
     def initialize(self):
-        self.options.declare('vec_size',default=1,types=int)
+        self.options.declare('vec_size',default=1, types=int)
+
+    def setup(self):
+        n = self.options['vec_size']
+
+        ###Total Mass Component####################################
+        self.add_subsystem(
+            'Mass',TotalMassComp(vec_size=n),
+            promotes_inputs=['m_empty',
+                             'm_fuel'],
+            promotes_outputs=['m_total']
+                           )
+        #^######################################################^#
+
+        ###Breguet Range Component################################
+        self.add_subsystem(
+            'Range',BreguetRangeComp(vec_size=n),
+            promotes_inputs=['V',
+                            'm_total','LD',
+                            'SFC',
+                            'm_fuel'],
+            promotes_outputs=['R']
+                           )
+        #^######################################################^#
+
+        ###Structural Weight Component############################
+        self.add_subsystem(
+            'Weight',Weights_Struct(vec_size=n),
+            promotes_inputs=['S','AR','V',
+            'delta_kw','delta_fsys','delta_p',
+            'm_total','m_engine'],
+            promotes_outputs=['m_wing','m_empty']
+                           )
+        #^######################################################^#
+
+        ###Aerodynamics Component#################################
+        self.add_subsystem(
+            'Aero',AeroComp(vec_size=n),
+            promotes_inputs=['S','AR','V',
+            'delta_CD0','delta_ks','delta_e',
+            'm_total'], 
+            promotes_outputs=['CL','CD','LD','WL']
+                           )
+        #^######################################################^#
+
+        ###Range Residual#########################################
+        initial_guess = np.ones(n)*16000 #kg
+        Balance = om.BalanceComp()
+        
+        Balance.add_balance(
+            name='m_fuel',val=initial_guess,
+            units='kg',lower=1000.0,upper=50000.0,
+            lhs_name='R',rhs_name='R_target',
+            rhs_val=parameters['R_target'],
+            eq_units='m',ref=16000.0,res_ref=1.0e6,
+            )
+        
+        self.add_subsystem('Balance', Balance,
+                           promotes_inputs=['R'],
+                           promotes_outputs=['m_fuel'])
+        #^######################################################^#
+        
+        ###Residual Solver Options################################
+        newton = self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
+        self.nonlinear_solver.options['iprint'] = 2
+        self.nonlinear_solver.options['maxiter'] = 500
+        self.nonlinear_solver.options['atol'] = 1e-7
+        self.nonlinear_solver.options['rtol'] = 1e-7
+
+        line_search = newton.linesearch = om.ArmijoGoldsteinLS(
+                                    bound_enforcement='vector',
+                                        )
+        line_search.options['maxiter'] = 20
+        line_search.options['print_bound_enforce'] = True
+        self.linear_solver = om.DirectSolver()
+        #^######################################################^#
+
+class ExampleMDA(om.Group):
+
+    def initialize(self):
+        self.options.declare('vec_size',default=1, types=int)
+    
+    def setup(self):
+        n = self.options['vec_size']
+
+        ###Propulsion Components##################################
+        self.add_subsystem(
+            'Prop', Propulsion(vec_size=n),
+            promotes_inputs=['delta_eta','delta_kv',
+                             'V','SFC_tech'],
+            promotes_outputs=['SFC']
+                          )
+        #^######################################################^#
+
+        ###Engine Weight Component################################
+        self.add_subsystem(
+            'Engine', EngineWeight(vec_size=n), 
+            promotes_inputs=['delta_alpha','SFC_tech'],
+            promotes_outputs=['m_engine']
+                           )
+        #^######################################################^#
+        
+        ###Coupled Component Group################################
+        self.add_subsystem(
+            'Coupled', CoupledDisciplines(vec_size=n), 
+            promotes_inputs=['delta_kw','delta_fsys','delta_p',
+                            'delta_CD0','delta_ks','delta_e',
+                            'S','AR','V',
+                            'SFC','m_engine'],
+            promotes_outputs=['R',
+                              'm_fuel','m_total',
+                              'm_empty','m_wing',
+                              'CL','CD','LD','WL']
+                           )
+        #^######################################################^#
+
+class DOC(om.ExplicitComponent):
+
+    def initialize(self):
+        self.options.declare('vec_size', types=int)
 
     def setup(self):
         n = self.options['vec_size']
@@ -29,42 +148,37 @@ class DOC(om.ExplicitComponent):
         self.add_input('C_eng_ref', units='USD')
         self.add_input('beta_base')
 
-        self.add_input('N_pax', desc="Number of passengers")
-
         #Global design variables
-        self.add_input('SFC_tech', val=0., desc='SFC technology factor')
-        self.add_input('V', units='m/s', desc='Cruise speed')
+        self.add_input('SFC_tech', units=None)
+        self.add_input('V', units='m/s')
 
         #Local design variable
-        self.add_input('R',shape=(n,), units='m', desc='Breguet range')
+        self.add_input('R', units='m', 
+                       shape=(n,))
         
         #Solver state
-        self.add_input('m_fuel',shape=(n,), units='kg', desc='Fuel mass') 
+        self.add_input('m_fuel', units='kg',
+                        shape=(n,)) 
 
         #Uncertainties
-        self.add_input('delta_Cf', val=1.0, shape=(n,))
-        self.add_input('delta_beta', val=1.0, shape=(n,))
+        self.add_input('delta_Cf',val=np.ones(n),units=None,
+                       shape=(n,))
+        self.add_input('delta_beta',val=np.ones(n), units=None, 
+                       shape=(n,))
 
         #Output
-        self.add_output('DOC', units='USD', desc="Direct operating cost", shape=(n,))
-
-        #self.add_output('Dpm', desc="DOC/pax*km", shape=(n,))
-
+        self.add_output('DOC', units='USD', 
+                         shape=(n,))
+       
     def setup_partials(self):
         n = self.options['vec_size']
-        idx = np.arange(n)
+        arange = np.arange(n)
 
         self.declare_partials('DOC', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
-        self.declare_partials('DOC', ['m_fuel', 'R','delta_Cf', 'delta_beta'], rows=idx, cols=idx)
-
-        #self.declare_partials('Dpm', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base', 'N_pax'])
-        #self.declare_partials('Dpm', ['m_fuel', 'R','delta_Cf', 'delta_beta'], rows=idx, cols=idx)
+        self.declare_partials('DOC', ['R', 'm_fuel', 'delta_Cf', 'delta_beta'], rows=arange, cols=arange)
 
     def compute(self, inputs, outputs):
-        """
-        DOC = Cf_base * delta_Cf * m_fuel + C_time * (R / V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-        """
-
+ 
         SFC_tech = inputs['SFC_tech']
         V = inputs['V']
         Cf_base = inputs['Cf_base']
@@ -77,13 +191,8 @@ class DOC(om.ExplicitComponent):
         delta_beta = inputs['delta_beta']
         delta_Cf = inputs['delta_Cf']
 
-        N_pax = inputs['N_pax']
-
         outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-
-        #R_km = R/1000
-        #outputs['Dpm'] = DOC / (N_pax * R_km)
-    
+        
     def compute_partials(self, inputs, partials):
         SFC_tech = inputs['SFC_tech']
         V = inputs['V']
@@ -97,9 +206,7 @@ class DOC(om.ExplicitComponent):
         delta_Cf = inputs['delta_Cf']
         delta_beta = inputs['delta_beta']
 
-        N_pax = inputs['N_pax']
-
-        DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
+        # DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
 
         partials['DOC', 'm_fuel'] = Cf_base * delta_Cf
         partials['DOC', 'R'] = C_time / V
@@ -115,116 +222,116 @@ class DOC(om.ExplicitComponent):
         partials['DOC', 'delta_Cf'] = Cf_base * m_fuel
         partials['DOC', 'delta_beta'] = (k_acq * C_eng_ref) * (beta_base * SFC_tech)
 
-        """
-
-        partials['Dpm', 'm_fuel'] = partials['DOC', 'm_fuel'] / (N_pax * R)
-        partials['Dpm', 'R'] = -(Cf_base * delta_Cf * m_fuel + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)) / (N_pax * R**2)
-        partials['Dpm', 'V'] = partials['DOC', 'V'] / (N_pax * R)
-        partials['Dpm', 'SFC_tech'] = partials['DOC', 'SFC_tech'] / (N_pax * R)
-        partials['Dpm', 'Cf_base'] = partials['DOC', 'Cf_base'] / (N_pax * R)
-        partials['Dpm', 'C_time'] = partials['DOC', 'C_time'] / (N_pax * R)
-        partials['Dpm', 'k_acq'] = partials['DOC', 'k_acq'] / (N_pax * R)
-        partials['Dpm', 'C_eng_ref'] = partials['DOC', 'C_eng_ref'] / (N_pax * R)
-        partials['Dpm', 'beta_base'] = partials['DOC', 'beta_base'] / (N_pax * R)
-        partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
-
-        partials['Dpm', 'delta_Cf'] = partials['DOC', 'delta_Cf'] / (N_pax * R)
-        partials['Dpm', 'delta_beta'] = partials['DOC', 'delta_beta'] / (N_pax * R)
-        
-        """
-
-
-class ExampleMDA(om.Group):
+class Dpm(om.ExplicitComponent):
 
     def initialize(self):
-        self.options.declare('vec_size',default=1, types=int)
-    
+        self.options.declare('vec_size', types=int)
+
     def setup(self):
         n = self.options['vec_size']
+
+        #Parameters
+        self.add_input('DOC', units='USD', shape=(n,))
+
+        self.add_input('N_pax')
+
+        #Local design variable
+        self.add_input('R', units='km',
+                        shape=(n,))
+
+        #Output
+        self.add_output('Dpm', shape=(n,))
+
+    def setup_partials(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
+
+        self.declare_partials('Dpm', ['N_pax'])
+        self.declare_partials('Dpm', ['R', 'DOC'], rows=arange, cols=arange)
+
+    def compute(self, inputs, outputs):
+
+        N_pax = inputs['N_pax']
+        DOC = inputs['DOC']
+        R = inputs['R']
+
+        outputs['Dpm'] = DOC / (N_pax * R)
+    
+    def compute_partials(self, inputs, partials):
+        N_pax = inputs['N_pax']
+        DOC = inputs['DOC']
+        R = inputs['R']
+
+        partials['Dpm', 'R'] = -(DOC / (N_pax * R**2))
+        partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
+        partials['Dpm', 'DOC'] = 1 / (N_pax * R)
         
-        self.add_subsystem(
-                            'Prop', Propulsion(vec_size=n),
-                            promotes_inputs=['V', 'SFC_tech', 'delta_eta', 'delta_kv'],
-                            promotes_outputs=['SFC']
-                          )
+class CL_constraint(om.ExplicitComponent):
+    
+    def initialize(self):
+        self.options.declare('vec_size', types=int)
 
-        self.add_subsystem(
-                            'Engine', EngineWeight(vec_size=n), 
-                            promotes_inputs=['SFC_tech','delta_alpha'],
-                            promotes_outputs=['m_engine']
-                           )
+    def setup(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
 
-        self.add_subsystem(
-                           'Aero', AeroDiscipline(vec_size=n), 
-                           promotes_inputs=['S', 'AR', 'V', 'delta_CD0', 'delta_ks', 'delta_e'],
-                           promotes_outputs=['CL','CD']
-                           )
+        self.add_input('CL', shape=(n,))
 
-        self.add_subsystem(
-                           'Weight', Weights_Struct(vec_size=n),
-                            promotes_inputs=['S', 'AR', 'V', 'delta_fsys','delta_kw','delta_p'],
-                            promotes_outputs=['m_empty']
-                           )
+        self.add_input('CL_target', val=0.53)
 
-        self.add_subsystem(
-                           'Mass', TotalMassComp(vec_size=n),
-                           promotes_outputs=['m_total']
-                           )
+        self.add_output('CL_constraint', shape=(n,))
 
-        self.add_subsystem(
-                            'Range', BreguetRangeComp(vec_size=n), 
-                            promotes_inputs=['V']
-                           )
-        
-        Balance = om.BalanceComp()
-        Balance.add_balance(
-            name='m_fuel',
-            val=16000.0* np.ones(n),
-            units='kg',
-            lower=1000.0,
-            upper=50000.0,
-            lhs_name='R',
-            rhs_name='R_target',
-            eq_units='m',
-            ref=16000.0,
-            res_ref=1.0e6,
-            )
-        self.add_subsystem('Balance', Balance, promotes_outputs=['m_fuel'])
+        # should be identity matrix
+        self.declare_partials('CL_constraint', 'CL', rows=arange, cols=arange)
 
+    def compute(self, inputs, outputs):
 
-        self.connect('m_fuel', 'Range.m_fuel')
-        self.connect('m_total', 'Range.m_total')
-        self.connect('Aero.LD', 'Range.LD')
-        self.connect('SFC', 'Range.SFC')
-        self.connect('Range.R', 'Balance.R')
-        self.connect('m_fuel', 'Mass.m_fuel')
-        self.connect('m_empty', 'Mass.m_empty')
-        self.connect('m_total', 'Aero.m_total')
-        self.connect('m_engine', 'Weight.m_engine')
-        self.connect('m_total', 'Weight.m_total')
+        CL = inputs['CL']
+        CL_target = inputs['CL_target']
 
+        outputs['CL_constraint'] = CL_target - CL
 
-        newton = self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
-        self.nonlinear_solver.options['iprint'] = 2
-        self.nonlinear_solver.options['maxiter'] = 500
-        self.nonlinear_solver.options['atol'] = 1e-7
-        self.nonlinear_solver.options['rtol'] = 1e-7
+    def compute_partials(self, inputs, partials):
 
-        line_search = newton.linesearch = om.ArmijoGoldsteinLS(
-        bound_enforcement='vector',
-        )
-        line_search.options['maxiter'] = 20
-        line_search.options['print_bound_enforce'] = True
-        
-        self.linear_solver = om.DirectSolver()
+        partials['CL_constraint', 'CL'] = -1
+
+class WingLoad_constraint(om.ExplicitComponent):
+    
+    def initialize(self):
+        self.options.declare('vec_size', types=int)
+
+    def setup(self):
+        n = self.options['vec_size']
+        arange = np.arange(n)
+
+        self.add_input('WL', shape=(n,))
+
+        self.add_input('WL_target',val=5905.0)
+
+        self.add_output('WL_constraint', shape=(n,))
+
+        # should be identity matrix
+        self.declare_partials('WL_constraint', 'WL', rows=arange, cols=arange)
+
+    def compute(self, inputs, outputs):
+
+        WL = inputs['WL']
+        WL_target = inputs['WL_target']
+
+        outputs['WL_constraint'] = WL - WL_target
+
+    def compute_partials(self, inputs, partials):
+
+        partials['WL_constraint', 'WL'] = 1
 
 
 from uqpce.mdao.uqpcegroup import UQPCEGroup
 from uqpce.mdao import interface
 import os
 from fixed import optimal
+
 def uqpce_main_script():
-        #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
     #                               Input Files
     #---------------------------------------------------------------------------
 
@@ -245,7 +352,7 @@ def uqpce_main_script():
     ) = interface.initialize(input_file, matrix_file)
     
     prob = om.Problem()
-
+    
     #---------------------------------------------------------------------------
     #                   Add Subsystems to Problem
     #---------------------------------------------------------------------------
@@ -257,7 +364,23 @@ def uqpce_main_script():
                           'delta_eta', 'delta_kv','delta_alpha',
                           'delta_CD0','delta_ks','delta_e',
                           'delta_fsys','delta_kw','delta_p']), 
-        promotes_outputs=['m_fuel','m_empty','m_engine','m_total','CL','CD','SFC']
+        promotes_outputs=['m_fuel','m_empty','m_engine',
+                          'm_total','CL','CD','WL','SFC','R']
+    )
+
+
+    prob.model.add_subsystem(
+        'WingLoad_constraint', 
+        WingLoad_constraint(vec_size=resp_cnt), 
+        promotes_inputs=['WL'], 
+        promotes_outputs=['WL_constraint']
+    )
+
+    prob.model.add_subsystem(
+        'LiftCoeff_constraint', 
+        CL_constraint(vec_size=resp_cnt), 
+        promotes_inputs=['CL'], 
+        promotes_outputs=['CL_constraint']
     )
 
 
@@ -265,13 +388,18 @@ def uqpce_main_script():
         'DOC_objective', 
         DOC(vec_size=resp_cnt), 
         promotes_inputs=(['V','SFC_tech',
-                          'delta_beta','delta_Cf',]), 
+                          'delta_beta','delta_Cf','R','m_fuel']), 
         promotes_outputs=['DOC']
     )
 
+    prob.model.add_subsystem(
+        'DPM_objective', 
+        Dpm(vec_size=resp_cnt), 
+        promotes_inputs=['DOC','R'], 
+        promotes_outputs=['Dpm']
+    )
 
-    prob.model.connect('m_fuel','DOC_objective.m_fuel')
-    prob.model.connect('MDA.Range.R','DOC_objective.R')
+
 
     #---------------------------------------------------------------------------
     #                   Add UQPCE Group to Problem
@@ -286,12 +414,12 @@ def uqpce_main_script():
             tail='both',
             epistemic_cnt=epistemic_cnt,
             aleatory_cnt=aleatory_cnt,
-            uncert_list=['DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+            uncert_list=['DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
             tanh_omega=1e-3,
-            sample_ref0=[ 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0],
-            sample_ref=[ 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1],
+            sample_ref0=[ 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0,0.0],
+            sample_ref=[ 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1,0.1],
         ),
-        promotes_inputs=[ 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC'],
+        promotes_inputs=[ 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
         promotes_outputs=[
 
             'DOC:resampled_responses',
@@ -340,7 +468,13 @@ def uqpce_main_script():
             'SFC:ci_lower',
             'SFC:ci_upper',
             'SFC:mean',
-            'SFC:mean_plus_var'
+            'SFC:mean_plus_var',
+
+            'CL_constraint:resampled_responses',
+            'CL_constraint:ci_lower',
+            'CL_constraint:ci_upper',
+            'CL_constraint:mean',
+            'CL_constraint:mean_plus_var'
         ]
     )
 
@@ -380,38 +514,21 @@ def uqpce_main_script():
         ref=124.6,
     )
 
-    prob.model.add_design_var(
-        'AR',
-        lower=7.0,
-        upper=50.0,
-        ref=9.45,
-    )
+    prob.model.add_design_var('AR',lower=7.0,upper=50.0,ref=9.45)
 
-    prob.model.add_design_var(
-        'V',
-        lower=200.0,
-        upper=260.0,
-        ref=230.0,
-    )
+    prob.model.add_design_var('V',lower=200.0,upper=260.0,ref=230.0)
 
-    prob.model.add_design_var(
-        'SFC_tech',
-        lower=-1.0,
-        upper=1.0,
-        ref=1.0,
-    )
+    prob.model.add_design_var('SFC_tech',lower=-1.0,upper=1.0,ref=1.0)
 
-    prob.model.add_objective(
-        'DOC:mean',
-        ref=2.0e4,
-    )
+    prob.model.add_objective('DOC:mean',ref=2.0e4)
 
     
-    prob.model.add_constraint(
-        'CL:mean',
-        upper=0.53,
-        ref=0.5,
-    )
+    prob.model.add_constraint('CL_constraint:ci_lower',lower=0.0, ref0=1, ref=2)
+
+    #prob.model.add_constraint(
+    #    'CL:mean',
+    #    upper=0.53
+    #)
 
 
     prob.setup()
