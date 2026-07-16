@@ -12,7 +12,7 @@ class Weights_Struct(om.ExplicitComponent):
 
         self.add_input('S', units='m**2')
         self.add_input('AR', units=None)
-        self.add_input('V',units='m/s')
+        self.add_input('V_cruise',units='m/s')
 
         self.add_input('m_total',  units='kg',
                        shape=(n,))
@@ -43,10 +43,10 @@ class Weights_Struct(om.ExplicitComponent):
         indices = np.arange(n)
         scalar_columns = np.zeros(n, dtype=int)
 
-        m_wing_scalar_inputs = ['S','AR','V','kw_base','p_base','V_ref']
+        m_wing_scalar_inputs = ['S','AR','V_cruise','kw_base','p_base','V_ref']
         m_wing_vector_inputs = ['m_total','delta_kw','delta_p']
 
-        m_empty_scalar_inputs = ['S','AR','V','kw_base','fsys_base','p_base','V_ref','m_fuse']
+        m_empty_scalar_inputs = ['S','AR','V_cruise','kw_base','fsys_base','p_base','V_ref','m_fuse']
         m_empty_vector_inputs = ['m_total','m_engine','delta_kw','delta_fsys','delta_p']
 
         self.declare_partials('m_wing',m_wing_scalar_inputs,rows=indices,cols=scalar_columns)
@@ -66,7 +66,7 @@ class Weights_Struct(om.ExplicitComponent):
 
         S = inputs['S']
         AR = inputs['AR']
-        V = inputs['V']
+        V = inputs['V_cruise']
 
         m_total = inputs['m_total']
         m_engine = inputs['m_engine']
@@ -96,7 +96,7 @@ class Weights_Struct(om.ExplicitComponent):
 
         S = inputs['S']
         AR = inputs['AR']
-        V = inputs['V']
+        V = inputs['V_cruise']
 
         m_total = inputs['m_total']
 
@@ -109,7 +109,7 @@ class Weights_Struct(om.ExplicitComponent):
         partials['m_wing', 'S'] = 0.758 * m_wing / S
         partials['m_wing', 'AR'] = 0.6 * m_wing / AR
         partials['m_wing', 'm_total'] = 0.006 * m_wing / m_total
-        partials['m_wing', 'V'] = delta_p * p_base * m_wing / V
+        partials['m_wing', 'V_cruise'] = delta_p * p_base * m_wing / V
 
         partials['m_wing', 'delta_kw'] = kw_base * (S ** 0.758) * (AR ** 0.6) * (m_total ** 0.006) * ((V/V_ref) ** (p_base * delta_p))
         partials['m_wing', 'delta_p'] = m_wing * p_base * np.log(V / V_ref)
@@ -122,7 +122,7 @@ class Weights_Struct(om.ExplicitComponent):
 
         partials['m_empty', 'S'] = 0.758 * m_wing / S
         partials['m_empty', 'AR'] = 0.6 * m_wing / AR
-        partials['m_empty', 'V'] = (p_base * delta_p) * m_wing / V
+        partials['m_empty', 'V_cruise'] = (p_base * delta_p) * m_wing / V
 
         partials['m_empty', 'm_total'] = 0.006 * m_wing / m_total + fsys_base * delta_fsys
         partials['m_empty', 'm_engine'] = 1.0

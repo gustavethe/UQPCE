@@ -24,7 +24,7 @@ class AeroComp(om.ExplicitComponent):
         self.add_input('e_base', units=None)
         
         self.add_input('S',  units="m**2")
-        self.add_input('V', units="m/s")
+        self.add_input('V_cruise', units="m/s")
         self.add_input('AR', units=None)
     
         self.add_input('m_total',units="kg",
@@ -52,7 +52,7 @@ class AeroComp(om.ExplicitComponent):
         arange = np.arange(n)
     
     #Sensitivities-start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        self.declare_partials(of="CL",wrt="V",method="exact")
+        self.declare_partials(of="CL",wrt='V_cruise',method="exact")
         self.declare_partials(of="CL",wrt="S",method="exact")
         #self.declare_partials(of="CL",wrt="AR",method="exact")
         #des variables^
@@ -62,7 +62,7 @@ class AeroComp(om.ExplicitComponent):
         #all the rest of CL wrt other inputs are zero by default, so not needed
         #other partials just in case^
 
-        self.declare_partials(of="CD",wrt="V",method="exact")
+        self.declare_partials(of="CD",wrt='V_cruise',method="exact")
         self.declare_partials(of="CD",wrt="S",method="exact")
         self.declare_partials(of="CD",wrt="AR",method="exact")
         self.declare_partials(of="CD",wrt="m_total",method="exact", rows=arange, cols=arange)
@@ -77,7 +77,7 @@ class AeroComp(om.ExplicitComponent):
         self.declare_partials(of="CD",wrt="delta_ks",method="exact", rows=arange, cols=arange)
 
 
-        self.declare_partials(of="LD",wrt="V",method="exact")
+        self.declare_partials(of="LD",wrt='V_cruise',method="exact")
         self.declare_partials(of="LD",wrt="S",method="exact")
         self.declare_partials(of="LD",wrt="AR",method="exact")
         self.declare_partials(of="LD",wrt="m_total",method="exact", rows=arange, cols=arange)
@@ -114,7 +114,7 @@ class AeroComp(om.ExplicitComponent):
 
         #do this \/ double equal thingy to reuse output when needed, this synatx pattern might be useful
         #in compute partials function for chain rule stuff
-        outputs['CL'] = CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V']**2)*inputs['S'])
+        outputs['CL'] = CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V_cruise']**2)*inputs['S'])
         C_D0 = C_D0_base*delta_CD0 + ks_base*delta_ks*(inputs['S']-S_0)     
         outputs['CD'] = CD = C_D0 + (CL**2) / (np.pi*inputs['AR']*e_base*delta_e)
         outputs['LD'] = CL/CD
@@ -131,11 +131,11 @@ class AeroComp(om.ExplicitComponent):
         delta_ks = inputs['delta_ks']
         delta_e = inputs['delta_e']
 
-        CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V']**2)*inputs['S'])         
+        CL = (inputs['m_total']*g) / ((1.0/2.0)*rho*(inputs['V_cruise']**2)*inputs['S'])         
         C_D0 = C_D0_base*delta_CD0 + ks_base*delta_ks*(inputs['S']-S_0) 
         CD = C_D0 + (CL**2) / (np.pi*inputs['AR']*e_base*delta_e)
                                                   
-        partials['CL','V'] = dCLdV = -2*CL*(1.0/inputs['V'])
+        partials['CL','V_cruise'] = dCLdV = -2*CL*(1.0/inputs['V_cruise'])
         partials['CL','S'] = dCLdS = -1*CL*(1.0/inputs['S'])
         #partials['CL','AR'] = dCLdAR = 0 #fixed to assume S and AR as independent. span is always 
         #computed from these inputs
@@ -172,7 +172,7 @@ class AeroComp(om.ExplicitComponent):
         product_rule_rho = 2*CL*dCLdrho*(1/inputs['AR'])
         product_rule_g = 2*CL*dCLdg*(1/inputs['AR'])
         
-        partials['CD','V'] = dCDdV = dCD_0dV + (1/(np.pi*e_base*delta_e))*(product_rule_V)
+        partials['CD','V_cruise'] = dCDdV = dCD_0dV + (1/(np.pi*e_base*delta_e))*(product_rule_V)
         partials['CD','S'] = dCDdS =  dCD_0dS + (1/(np.pi*e_base*delta_e))*(product_rule_S)
         partials['CD','AR'] = dCDdAR = dCD_0dAR +  (1/(np.pi*e_base*delta_e))*(product_rule_AR)
         partials['CD','m_total'] = dCDdm =  dCD_0dm + (1/(np.pi*e_base*delta_e))*(product_rule_m)
@@ -187,7 +187,7 @@ class AeroComp(om.ExplicitComponent):
         partials['CD','ks_base'] = dCDdks_base = delta_ks*(inputs['S']-S_0)
         partials['CD','delta_ks'] = dCDddelta_ks =  ks_base*(inputs['S']-S_0)
 
-        partials['LD','V'] = (CD*dCLdV - CL*dCDdV)/(CD**2) 
+        partials['LD','V_cruise'] = (CD*dCLdV - CL*dCDdV)/(CD**2) 
         partials['LD','S'] = (CD*dCLdS - CL*dCDdS)/(CD**2)
         partials['LD','AR'] = (CD*dCLdAR - CL*dCDdAR)/(CD**2)
         partials['LD','m_total'] = (CD*dCLdm - CL*dCDdm)/(CD**2)
@@ -215,7 +215,7 @@ def main():
     n_p = 5000
 
     prblm = om.Problem()
-    prblm.model.add_subsystem('Aero',AeroDiscipline(vec_size=n_p))
+    prblm.model.add_subsystem('Aero',AeroComp(vec_size=n_p))
 
     prblm.setup()
 

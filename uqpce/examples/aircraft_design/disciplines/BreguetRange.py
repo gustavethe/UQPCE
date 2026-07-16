@@ -10,7 +10,7 @@ class BreguetRangeComp(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
        
-        self.add_input('V', units='m/s') #design variable
+        self.add_input('V_cruise', units='m/s') #design variable
 
         self.add_input('SFC',units='1/s',
                        shape=(n,)) #vector inputs
@@ -28,11 +28,11 @@ class BreguetRangeComp(om.ExplicitComponent):
         n= self.options['vec_size']
         indices = np.arange(n)
 
-        self.declare_partials('R', ['V'], rows= indices, cols=np.zeros(n, dtype=int))
+        self.declare_partials('R', ['V_cruise'], rows= indices, cols=np.zeros(n, dtype=int))
         self.declare_partials('R', ['SFC', 'LD', 'm_total', 'm_fuel'], rows=indices, cols=indices)
 
     def compute (self, inputs, outputs):
-        V = inputs['V']
+        V = inputs['V_cruise']
         SFC = inputs['SFC']
         LD = inputs['LD']
         m_total = inputs['m_total']
@@ -41,7 +41,7 @@ class BreguetRangeComp(om.ExplicitComponent):
         outputs['R'] = ((V / SFC) * (LD) * np.log(m_total / (m_total - m_fuel)))
 
     def compute_partials(self, inputs, partials): 
-        V = inputs['V']
+        V = inputs['V_cruise']
         SFC = inputs['SFC']
         LD = inputs['LD']
         m_total = inputs['m_total']
@@ -51,7 +51,7 @@ class BreguetRangeComp(om.ExplicitComponent):
 
         # R = (V/SFC)*LD*ln(m_total/(m_total - m_fuel))
 
-        partials['R', 'V'] = (1.0 / SFC) * LD * thelog
+        partials['R', 'V_cruise'] = (1.0 / SFC) * LD * thelog
 
         partials['R', 'SFC'] = -(V / SFC**2) * LD * thelog
 

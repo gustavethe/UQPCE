@@ -34,7 +34,7 @@ class CoupledDisciplines(om.Group):
         ###Breguet Range Component################################
         self.add_subsystem(
             'Range',BreguetRangeComp(vec_size=n),
-            promotes_inputs=['V',
+            promotes_inputs=['V_cruise',
                             'm_total','LD',
                             'SFC',
                             'm_fuel'],
@@ -45,7 +45,7 @@ class CoupledDisciplines(om.Group):
         ###Structural Weight Component############################
         self.add_subsystem(
             'Weight',Weights_Struct(vec_size=n),
-            promotes_inputs=['S','AR','V',
+            promotes_inputs=['S','AR','V_cruise',
             'delta_kw','delta_fsys','delta_p',
             'm_total','m_engine'],
             promotes_outputs=['m_wing','m_empty']
@@ -55,7 +55,7 @@ class CoupledDisciplines(om.Group):
         ###Aerodynamics Component#################################
         self.add_subsystem(
             'Aero',AeroComp(vec_size=n),
-            promotes_inputs=['S','AR','V',
+            promotes_inputs=['S','AR','V_cruise',
             'delta_CD0','delta_ks','delta_e',
             'm_total'], 
             promotes_outputs=['CL','CD','LD','WL']
@@ -106,7 +106,7 @@ class ExampleMDA(om.Group):
         self.add_subsystem(
             'Prop', Propulsion(vec_size=n),
             promotes_inputs=['delta_eta','delta_kv',
-                             'V','SFC_tech'],
+                             'V_cruise','SFC_tech'],
             promotes_outputs=['SFC']
                           )
         #^######################################################^#
@@ -124,7 +124,7 @@ class ExampleMDA(om.Group):
             'Coupled', CoupledDisciplines(vec_size=n), 
             promotes_inputs=['delta_kw','delta_fsys','delta_p',
                             'delta_CD0','delta_ks','delta_e',
-                            'S','AR','V',
+                            'S','AR','V_cruise',
                             'SFC','m_engine'],
             promotes_outputs=['R',
                               'm_fuel','m_total',
@@ -150,7 +150,7 @@ class DOC(om.ExplicitComponent):
 
         #Global design variables
         self.add_input('SFC_tech', units=None)
-        self.add_input('V', units='m/s')
+        self.add_input('V_cruise', units='m/s')
 
         #Local design variable
         self.add_input('R', units='m', 
@@ -174,13 +174,13 @@ class DOC(om.ExplicitComponent):
         n = self.options['vec_size']
         arange = np.arange(n)
 
-        self.declare_partials('DOC', ['V', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
+        self.declare_partials('DOC', ['V_cruise', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
         self.declare_partials('DOC', ['R', 'm_fuel', 'delta_Cf', 'delta_beta'], rows=arange, cols=arange)
 
     def compute(self, inputs, outputs):
  
         SFC_tech = inputs['SFC_tech']
-        V = inputs['V']
+        V = inputs['V_cruise']
         Cf_base = inputs['Cf_base']
         m_fuel = inputs['m_fuel']
         C_time = inputs['C_time']
@@ -195,7 +195,7 @@ class DOC(om.ExplicitComponent):
         
     def compute_partials(self, inputs, partials):
         SFC_tech = inputs['SFC_tech']
-        V = inputs['V']
+        V = inputs['V_cruise']
         Cf_base = inputs['Cf_base']
         m_fuel = inputs['m_fuel']
         C_time = inputs['C_time']
@@ -210,7 +210,7 @@ class DOC(om.ExplicitComponent):
 
         partials['DOC', 'm_fuel'] = Cf_base * delta_Cf
         partials['DOC', 'R'] = C_time / V
-        partials['DOC', 'V'] = -C_time * (R / V**2)
+        partials['DOC', 'V_cruise'] = -C_time * (R / V**2)
         partials['DOC', 'SFC_tech'] = k_acq * C_eng_ref * (beta_base * delta_beta)
 
         partials['DOC', 'Cf_base'] = delta_Cf * m_fuel
@@ -360,7 +360,7 @@ def uqpce_main_script():
     prob.model.add_subsystem(
         'MDA', 
         ExampleMDA(vec_size=resp_cnt), 
-        promotes_inputs=(['V', 'S', 'AR', 'SFC_tech',
+        promotes_inputs=(['V_cruise', 'S', 'AR', 'SFC_tech',
                           'delta_eta', 'delta_kv','delta_alpha',
                           'delta_CD0','delta_ks','delta_e',
                           'delta_fsys','delta_kw','delta_p']), 
@@ -387,7 +387,7 @@ def uqpce_main_script():
     prob.model.add_subsystem(
         'DOC_objective', 
         DOC(vec_size=resp_cnt), 
-        promotes_inputs=(['V','SFC_tech',
+        promotes_inputs=(['V_cruise','SFC_tech',
                           'delta_beta','delta_Cf','R','m_fuel']), 
         promotes_outputs=['DOC']
     )
@@ -404,6 +404,47 @@ def uqpce_main_script():
     #---------------------------------------------------------------------------
     #                   Add UQPCE Group to Problem
     #---------------------------------------------------------------------------
+
+    probailistic_DOC_list = ['DOC:resampled_responses','DOC:ci_lower',
+                             'DOC:ci_upper','DOC:mean','DOC:mean_plus_var']
+    
+    probailistic_m_fuel_list = ['m_fuel:resampled_responses','m_fuel:ci_lower',
+                                'm_fuel:ci_upper','m_fuel:mean','m_fuel:mean_plus_var',]
+    
+    probailistic_m_empty_list = ['m_empty:resampled_responses','m_empty:ci_lower',
+                                 'm_empty:ci_upper', 'm_empty:mean','m_empty:mean_plus_var',]
+    
+    probailistic_m_engine_list = ['m_engine:resampled_responses','m_engine:ci_lower',
+                                  'm_engine:ci_upper','m_engine:mean','m_engine:mean_plus_var',]
+    
+    probailistic_m_total_list = ['m_total:resampled_responses','m_total:ci_lower',
+                                 'm_total:ci_upper','m_total:mean','m_total:mean_plus_var',]
+    
+    probailistic_CL_list = ['CL:resampled_responses','CL:ci_lower',
+                            'CL:ci_upper','CL:mean','CL:mean_plus_var']
+
+    probailistic_CD_list = ['CD:resampled_responses','CD:ci_lower',
+                            'CD:ci_upper','CD:mean','CD:mean_plus_var']
+    
+    probailistic_SFC_list = ['SFC:resampled_responses','SFC:ci_lower',
+                             'SFC:ci_upper','SFC:mean','SFC:mean_plus_var',]
+    
+    probailistic_CL_constr_list = ['CL_constraint:resampled_responses',
+                                   'CL_constraint:ci_lower',
+                                   'CL_constraint:ci_upper',
+                                   'CL_constraint:mean',
+                                   'CL_constraint:mean_plus_var']
+
+    probailistic_output_list = (probailistic_DOC_list +
+                                probailistic_m_fuel_list +
+                                probailistic_m_empty_list +
+                                probailistic_m_engine_list +
+                                probailistic_m_total_list +
+                                probailistic_CL_list +
+                                probailistic_CD_list +
+                                probailistic_SFC_list +
+                                probailistic_CL_constr_list)
+
     prob.model.add_subsystem(
         'UQPCE',
         UQPCEGroup(
@@ -420,62 +461,7 @@ def uqpce_main_script():
             sample_ref=[ 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1,0.1],
         ),
         promotes_inputs=[ 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
-        promotes_outputs=[
-
-            'DOC:resampled_responses',
-            'DOC:ci_lower',
-            'DOC:ci_upper',
-            'DOC:mean',
-            'DOC:mean_plus_var',
-            
-            'm_fuel:resampled_responses',
-            'm_fuel:ci_lower',
-            'm_fuel:ci_upper',
-            'm_fuel:mean',
-            'm_fuel:mean_plus_var',
-
-            'm_empty:resampled_responses',
-            'm_empty:ci_lower',
-            'm_empty:ci_upper',
-            'm_empty:mean',
-            'm_empty:mean_plus_var',
-
-            'm_engine:resampled_responses',
-            'm_engine:ci_lower',
-            'm_engine:ci_upper',
-            'm_engine:mean',
-            'm_engine:mean_plus_var',
-
-            'm_total:resampled_responses',
-            'm_total:ci_lower',
-            'm_total:ci_upper',
-            'm_total:mean',
-            'm_total:mean_plus_var',
-
-            'CL:resampled_responses',
-            'CL:ci_lower',
-            'CL:ci_upper',
-            'CL:mean',
-            'CL:mean_plus_var',
-
-            'CD:resampled_responses',
-            'CD:ci_lower',
-            'CD:ci_upper',
-            'CD:mean',
-            'CD:mean_plus_var',
-
-            'SFC:resampled_responses',
-            'SFC:ci_lower',
-            'SFC:ci_upper',
-            'SFC:mean',
-            'SFC:mean_plus_var',
-
-            'CL_constraint:resampled_responses',
-            'CL_constraint:ci_lower',
-            'CL_constraint:ci_upper',
-            'CL_constraint:mean',
-            'CL_constraint:mean_plus_var'
-        ]
+        promotes_outputs= probailistic_output_list
     )
 
 
@@ -489,41 +475,26 @@ def uqpce_main_script():
 
     prob.model.set_input_defaults('S', val=optimal['S'], units='m**2')
     prob.model.set_input_defaults('AR', val=optimal['AR'])
-    prob.model.set_input_defaults('V', val=optimal['V'], units='m/s')
+    prob.model.set_input_defaults('V_cruise', val=optimal['V'], units='m/s')
     prob.model.set_input_defaults('SFC_tech', val=optimal['SFC_tech'])
 
+    prob.driver = om.pyOptSparseDriver(optimizer='SLSQP')
 
-    
-
-    
-
-    prob.driver = om.pyOptSparseDriver(
-    optimizer='SLSQP',
-    )
-
-    prob.driver.options['debug_print'] = [
-        'desvars',
-        'objs',
-        'nl_cons',
-    ]
-
-    prob.model.add_design_var(
-        'S',
-        lower=100.0,
-        upper=180.0,
-        ref=124.6,
-    )
+    prob.model.add_design_var('S',lower=100.0,upper=180.0,ref=124.6,)
 
     prob.model.add_design_var('AR',lower=7.0,upper=50.0,ref=9.45)
 
-    prob.model.add_design_var('V',lower=200.0,upper=260.0,ref=230.0)
+    prob.model.add_design_var('V_cruise',lower=200.0,upper=260.0,ref=230.0)
 
     prob.model.add_design_var('SFC_tech',lower=-1.0,upper=1.0,ref=1.0)
 
     prob.model.add_objective('DOC:mean',ref=2.0e4)
 
     
-    prob.model.add_constraint('CL_constraint:ci_lower',lower=0.0, ref0=1, ref=2)
+    prob.model.add_constraint('CL_constraint:ci_upper',lower=0.0, ref0=1, ref=2)
+
+    #prob.model.add_constraint('CL_constraint:ci_upper',upper=0.5, ref0=1, ref=2)
+
 
     #prob.model.add_constraint(
     #    'CL:mean',
@@ -551,7 +522,7 @@ def uqpce_main_script():
 
     prob.check_totals(of=['DOC:mean','CL:mean',
         'CL:ci_lower',
-        'CL:ci_upper',],wrt=['S', 'AR', 'SFC_tech','V'],
+        'CL:ci_upper',],wrt=['S', 'AR', 'SFC_tech','V_cruise'],
                       compact_print=True, method='fd')
     #initialize(prob)
     prob.run_driver()
@@ -568,16 +539,16 @@ def uqpce_main_script():
 
     #fig.suptitle(r"Direct Operating Cost PDFs")
 
-    ax.hist(DOC_dist,bins=100,density=True)
+    ax.hist(DOC_dist,bins=100,density=True,color='purple',alpha=0.5)
     ax.axvline(DOC_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
     ax.axvline(DOC_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
     #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
     #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
     #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
     
-    ax.hist(DOC_opt_dist,bins=100,density=True)
-    ax.axvline(DOC_opt_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
-    ax.axvline(DOC_opt_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
+    ax.hist(DOC_opt_dist,bins=100,density=True,color='green',alpha=0.5)
+    ax.axvline(DOC_opt_ci_lower, color='blue', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
+    ax.axvline(DOC_opt_ci_upper, color='blue', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
     #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
     #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
     #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)

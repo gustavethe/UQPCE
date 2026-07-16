@@ -35,7 +35,7 @@ def display_initial_guess(prob):
     print('737-800 DOC estimate [$/flight]:', prob.get_val('MDA.DOC_objective.DOC'))
 
 def initialize(prob):
-    prob.set_val('V', optimal['V'])
+    prob.set_val('V_cruise', optimal['V'])
     prob.set_val('S', optimal['S'])
     prob.set_val('AR', optimal['AR'])
     prob.set_val('SFC_tech', optimal['SFC_tech'])
