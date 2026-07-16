@@ -1,5 +1,6 @@
 import openmdao.api as om
 import numpy as np
+from fixed import parameters
 
 class Propulsion(om.ExplicitComponent):
     """
@@ -12,23 +13,28 @@ class Propulsion(om.ExplicitComponent):
         n = self.options['vec_size']
 
         #Parameters
-        self.add_input('SFC_ref', units='1/s')
-        self.add_input('eta_base',units=None)
-        self.add_input('kv_base',units=None)
-        self.add_input('V_ref', units="m/s")
+        
 
+        #proposed design variables
         self.add_input('SFC_tech', units=None)
         self.add_input('V_cruise', units='m/s')
 
-        #Uncertainties
-        self.add_input('delta_eta',val=np.ones(n), units=None, 
-                       shape=(n,))
-        self.add_input('delta_kv',val=np.ones(n), units=None, 
-                       shape=(n,))
+        #model variable (output from other component)
 
-        #Output
-        self.add_output('SFC', units="1/s",
-                         shape=(n,))
+        #uncertain parameters
+        self.add_input('delta_eta',val=np.ones(n), units=None, shape=(n,))
+        self.add_input('delta_kv',val=np.ones(n), units=None, shape=(n,))
+        
+        #tuning parameters
+        self.add_input('eta_base',units=None)
+        self.add_input('kv_base',units=None)
+
+        #constant parameters
+        self.add_input('SFC_ref', val=parameters['SFC_ref'], units='1/s')
+        self.add_input('V_ref', val=parameters['V_ref'], units="m/s")
+
+        #outputs
+        self.add_output('SFC', units="1/s", shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

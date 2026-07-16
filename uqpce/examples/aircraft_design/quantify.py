@@ -141,34 +141,29 @@ class DOC(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
 
-        #Parameters
-        self.add_input('Cf_base', units='USD/kg')
-        self.add_input('C_time', units='USD/s')
-        self.add_input('k_acq')
-        self.add_input('C_eng_ref', units='USD')
-        self.add_input('beta_base')
-
-        #Global design variables
+        #proposed design variables
         self.add_input('SFC_tech', units=None)
         self.add_input('V_cruise', units='m/s')
-
-        #Local design variable
-        self.add_input('R', units='m', 
-                       shape=(n,))
         
-        #Solver state
-        self.add_input('m_fuel', units='kg',
-                        shape=(n,)) 
+        #model variable (output from other component)
+        self.add_input('R', units='m', shape=(n,))
+        self.add_input('m_fuel', units='kg',shape=(n,)) 
 
-        #Uncertainties
-        self.add_input('delta_Cf',val=np.ones(n),units=None,
-                       shape=(n,))
-        self.add_input('delta_beta',val=np.ones(n), units=None, 
-                       shape=(n,))
+        #uncertain parameters
+        self.add_input('delta_Cf',val=np.ones(n),units=None,shape=(n,))
+        self.add_input('delta_beta',val=np.ones(n), units=None,shape=(n,))
 
-        #Output
-        self.add_output('DOC', units='USD', 
-                         shape=(n,))
+        #tuning parameters
+        self.add_input('Cf_base', units='USD/kg')
+        self.add_input('beta_base', units=None)
+        
+        #constant parameters
+        self.add_input('C_time', val=parameters['C_time'], units='USD/s')
+        self.add_input('k_acq', val=parameters['k_acq'], units=None)
+        self.add_input('C_eng_ref', val=parameters['C_eng_ref'], units='USD')
+
+        #outputs
+        self.add_output('DOC', units='USD',shape=(n,))
        
     def setup_partials(self):
         n = self.options['vec_size']
@@ -230,16 +225,23 @@ class Dpm(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
 
-        #Parameters
+        #proposed design variables
+        #n/a
+
+        #model variable (output from other component)
         self.add_input('DOC', units='USD', shape=(n,))
+        self.add_input('R', units='km',shape=(n,))
 
-        self.add_input('N_pax')
+        #uncertain parameters
+        #n/a
 
-        #Local design variable
-        self.add_input('R', units='km',
-                        shape=(n,))
+        #tuning parameters
+        #n/a
 
-        #Output
+        #constant parameters
+        self.add_input('N_pax', val=parameters['N_pax'])
+
+        #outputs
         self.add_output('Dpm', shape=(n,))
 
     def setup_partials(self):

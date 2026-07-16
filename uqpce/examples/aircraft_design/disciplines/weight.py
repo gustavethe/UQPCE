@@ -10,32 +10,32 @@ class Weights_Struct(om.ExplicitComponent):
     def setup(self):
         n= self.options['vec_size']
 
+        #proposed design variables
         self.add_input('S', units='m**2')
         self.add_input('AR', units=None)
         self.add_input('V_cruise',units='m/s')
 
-        self.add_input('m_total',  units='kg',
-                       shape=(n,))
-        self.add_input('m_engine', units='kg', 
-                       shape=(n,),)
+        #model variable (output from other component)
+        self.add_input('m_total',  units='kg', shape=(n,))
+        self.add_input('m_engine', units='kg', shape=(n,))
 
-        self.add_input("delta_kw",val=np.ones(n), units=None, 
-                       shape=(n,)) #uncertain variables
-        self.add_input("delta_fsys",val=np.ones(n), units=None, 
-                       shape=(n,))
-        self.add_input("delta_p",val=np.ones(n), units=None, 
-                       shape=(n,))
+        #uncertain parameters
+        self.add_input("delta_kw",val=np.ones(n), units=None, shape=(n,)) 
+        self.add_input("delta_fsys",val=np.ones(n), units=None, shape=(n,))
+        self.add_input("delta_p",val=np.ones(n), units=None, shape=(n,))
 
+        #tuning parameters
         self.add_input('kw_base', units=None)
         self.add_input('fsys_base', units=None)
         self.add_input('p_base', units=None)
-        self.add_input('V_ref', units='m/s')
-        self.add_input('m_fuse', units='kg')
+        
+        #constant parameters
+        self.add_input('V_ref', val=parameters['V_ref'], units='m/s')
+        self.add_input('m_fuse', val=parameters['m_fuse'], units='kg')
 
-        self.add_output('m_empty', units= 'kg', 
-                        shape=(n,))
-        self.add_output('m_wing', units='kg', 
-                        shape=(n,))
+        #outputs
+        self.add_output('m_empty', units= 'kg', shape=(n,))
+        self.add_output('m_wing', units='kg', shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']
@@ -150,17 +150,22 @@ class EngineWeight(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
 
-        #Parameters
-        self.add_input('m_eng_ref', units='kg')
+        #proposed design variables
+        self.add_input('SFC_tech', units=None)
+
+        #model variable (output from other component)
+        #n/a
+
+        #uncertain parameters
+        self.add_input('delta_alpha', val=1.0, shape=(n,))
+        
+        #tuning parameters
         self.add_input('alpha_base')
 
-        #Global design variables
-        self.add_input('SFC_tech', val=0., desc='SFC technology factor')
-    
-        #Uncertainties
-        self.add_input('delta_alpha', val=1.0, shape=(n,))
+        #constant parameters
+        self.add_input('m_eng_ref', val=parameters['m_eng_ref'], units='kg')
 
-        #Output
+        #outputs
         self.add_output('m_engine', units='kg', desc='Engine mass', shape=(n,))
 
     def setup_partials(self):

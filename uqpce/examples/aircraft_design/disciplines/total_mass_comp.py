@@ -1,5 +1,6 @@
 import openmdao.api as om
 import numpy as np
+from fixed import parameters
 #hi
 class TotalMassComp(om.ExplicitComponent):
     """
@@ -11,20 +12,24 @@ class TotalMassComp(om.ExplicitComponent):
     def setup(self):
         n = self.options['vec_size']
 
-        #Local design variable
-        self.add_input('m_empty', units='kg',
-                       shape=(n,))
+        #proposed design variables
+        #n/a
 
-        #Parameter
-        self.add_input('m_payload', units='kg')
+        #model variable (output from other component)
+        self.add_input('m_empty', units='kg',shape=(n,))
+        self.add_input('m_fuel', units='kg', shape=(n,))
 
-        #Solver state
-        self.add_input('m_fuel', units='kg', 
-                       shape=(n,))
+        #uncertain parameters
+        #n/a
 
-        #Output
-        self.add_output('m_total', units='kg',
-                        shape=(n,))
+        #tuning parameters
+        #n/a
+
+        #constant parameters
+        self.add_input('m_payload', val=parameters['m_payload_design'], units='kg')
+
+        #outputs
+        self.add_output('m_total', units='kg',shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

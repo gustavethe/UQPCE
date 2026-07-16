@@ -41,32 +41,25 @@ def initialize(prob):
     prob.set_val('SFC_tech', optimal['SFC_tech'])
 
     # Target range
-    prob.set_val('MDA.Coupled.Balance.R_target', parameters['R_target'])
-
-    # Mass parameters
-    #prob.set_val('MDA.Balance.m_fuel', 9000.0)
-    prob.set_val('MDA.Coupled.Weight.m_fuse', parameters['m_fuse'])
-    prob.set_val('MDA.Engine.m_eng_ref', parameters['m_eng_ref'])
-    prob.set_val('MDA.Coupled.Mass.m_payload', parameters['m_payload_design'])
-
-    # Ref/Environmental parameters
-    prob.set_val('MDA.Prop.SFC_ref', parameters['SFC_ref'])
-    prob.set_val('MDA.Prop.V_ref', parameters['V_ref'])    
-    prob.set_val('MDA.Coupled.Weight.V_ref', parameters['V_ref'])
-    prob.set_val('MDA.Coupled.Aero.g', 9.80665)
-    prob.set_val('MDA.Coupled.Aero.rho', 0.38)
-    prob.set_val('MDA.Coupled.Aero.C_D0_base', parameters['CD0_base'])
-    prob.set_val('MDA.Coupled.Aero.S_0', parameters['S_naught'])
-    prob.set_val('MDA.Coupled.Aero.e_base', parameters['e_oswald_base'])
-
-    # DOC_objective parameters
-    prob.set_val('DOC_objective.Cf_base', parameters['Cf_base'])
-    prob.set_val('DOC_objective.C_time', parameters['C_time'])
-    prob.set_val('DOC_objective.k_acq', parameters['k_acq'])
-    prob.set_val('DOC_objective.C_eng_ref', parameters['C_eng_ref'])
+    #prob.set_val('MDA.Coupled.Balance.R_target', parameters['R_target'])
+    #prob.set_val('MDA.Coupled.Weight.m_fuse', parameters['m_fuse'])
+    #prob.set_val('MDA.Engine.m_eng_ref', parameters['m_eng_ref'])
+    #prob.set_val('MDA.Coupled.Mass.m_payload', parameters['m_payload_design'])
+    #prob.set_val('MDA.Prop.SFC_ref', parameters['SFC_ref'])
+    #prob.set_val('MDA.Prop.V_ref', parameters['V_ref'])    
+    #prob.set_val('MDA.Coupled.Weight.V_ref', parameters['V_ref'])
+    #prob.set_val('MDA.Coupled.Aero.g', 9.80665)
+    #prob.set_val('MDA.Coupled.Aero.rho', 0.38)
+    #prob.set_val('MDA.Coupled.Aero.S_0', parameters['S_naught'])
+    #prob.set_val('DOC_objective.C_time', parameters['C_time'])
+    #prob.set_val('DOC_objective.k_acq', parameters['k_acq'])
+    #prob.set_val('DOC_objective.C_eng_ref', parameters['C_eng_ref'])
     #prob.set_val('DOC_objective.N_pax', parameters['N_pax'])
 
     #~~~~~tuning parameters
+    prob.set_val('MDA.Coupled.Aero.e_base', parameters['e_oswald_base'])
+    prob.set_val('MDA.Coupled.Aero.C_D0_base', parameters['CD0_base'])
+    prob.set_val('DOC_objective.Cf_base', parameters['Cf_base'])
         #fraction of total mass comprising 'systems' and stuff
     prob.set_val('MDA.Coupled.Weight.fsys_base', tuning['fsys_base'])
         #wing weight regression/fit tuning parameter
@@ -86,6 +79,9 @@ def initialize(prob):
         #about S_ref. I have no idea what to put for this, but I chose a 
         #small value above. Note units are 1/m**2
     prob.set_val('MDA.Coupled.Aero.ks_base', tuning['ks_base'])
+
+
+
 
 def initialize_og(prob):
     prob.set_val('V', optimal['V'])
