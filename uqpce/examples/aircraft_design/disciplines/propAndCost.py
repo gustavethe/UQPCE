@@ -14,7 +14,6 @@ class Propulsion(om.ExplicitComponent):
 
         #Parameters
         
-
         #proposed design variables
         self.add_input('SFC_tech', units=None)
         self.add_input('V_cruise', units='m/s')
