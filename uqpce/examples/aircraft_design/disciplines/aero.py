@@ -2,7 +2,6 @@ import numpy as np
 import openmdao.api as om
 
 from fixed import *
-from helpers import distribute_input
 
 
 from scipy.special import erfinv, erf
@@ -210,91 +209,7 @@ class AeroComp(om.ExplicitComponent):
 
 
 def main():
-
-    n_p = 5000
-
-    prblm = om.Problem()
-    prblm.model.add_subsystem('Aero',AeroComp(vec_size=n_p))
-
-    prblm.setup()
-
-    prblm.set_val('Aero.g', 9.81)
-    prblm.set_val('Aero.rho', 0.38)
-    prblm.set_val('Aero.C_D0_base', parameters['CD0_base'])
-    prblm.set_val('Aero.S_0', parameters['S_naught'])
-    prblm.set_val('Aero.ks_base', parameters['ks_base'])
-    prblm.set_val('Aero.e_base', parameters['e_oswald_base'])
-    prblm.set_val('Aero.S', parameters['S_naught']*0.9)
-    prblm.set_val('Aero.V', parameters['V_ref']) 
-    prblm.set_val('Aero.AR', parameters['AR'])
-    prblm.set_val('Aero.m_total', 80000.0)
-
-    del_e, CDF_e, PDF_e = distribute_input(0.98,1.0,0.05,n_p)
-    del_ks, CDF_ks, PDF_ks = distribute_input(0.98,1.0,0.15,n_p)
-    del_CD0, CDF_CD0, PDF_CD0 = distribute_input(0.98,1.0,0.1,n_p)
-
-
-
-    prblm.set_val('Aero.delta_CD0',del_CD0)
-    prblm.set_val('Aero.delta_ks',del_ks)
-    prblm.set_val('Aero.delta_e',del_e)
-
-    
-
-    prblm.run_model()
-
-    CL = prblm.get_val('Aero.CL')
-
-    CD = prblm.get_val('Aero.CD')
-
-    LoD = prblm.get_val('Aero.LD')
-
-
-    print("Expected Scalar CL:",CL,"\n")
-    print("Expected Vector of L/D values\n",LoD)
-
-
-    plt.rcParams.update({
-        "text.usetex" : True,
-        "font.family" : "serif"
-    })
-
-    figure_e, ax = plt.subplots(2,2)
-
-    ax_pdf_de = ax[0,0]
-    ax_cdf_de = ax[0,1]
-
-    ax_pdf_e = ax[1,0]
-    ax_cdf_e = ax[1,1]
-
-    
-    ax_pdf_de.plot(del_e,PDF_e,label=r"$\mathrm{PDF}(\delta_e)$")
-    ax_pdf_de.legend()
-    ax_pdf_de.set_xlabel(r"$\delta_e$")
-    ax_pdf_de.set_ylabel("Probability Density")
-
-    ax_cdf_de.plot(del_e,CDF_e,label=r"$\mathrm{CDF}(\delta_e)$")
-    ax_cdf_de.legend()
-    ax_cdf_de.set_xlabel(r"$\delta_e$")
-    ax_cdf_de.set_ylabel("Cummulative Probability")
-
-    ax_pdf_e.plot(del_e*parameters['e_oswald_base'],
-                   PDF_e/(parameters['e_oswald_base']),
-                   label=r"$\mathrm{PDF}(e_{\mathrm{oswald}})$")
-    ax_pdf_e.legend()
-    ax_pdf_e.set_xlabel(r"$e_{\mathrm{oswald}}$")
-    ax_pdf_e.set_ylabel("Probability Density")
-
-    ax_cdf_e.plot(del_e*parameters['e_oswald_base'],CDF_e,label=r"$\mathrm{CDF}(e_{\mathrm{oswald}})$")
-    ax_cdf_e.legend()
-    ax_cdf_e.set_xlabel(r"$e_{\mathrm{oswald}}$")
-    ax_cdf_e.set_ylabel("Cummulative Probability")
-
-    #ax_del_e.set_xlim([0,2])
-
-    #plt.hist(del_e*0.8,bins=25)
-
-    plt.show()
+    pass
 
 if __name__ == "__main__":
     main()
