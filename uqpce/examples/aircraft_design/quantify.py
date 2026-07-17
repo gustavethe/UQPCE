@@ -83,8 +83,8 @@ class CoupledDisciplines(om.Group):
         newton = self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
         self.nonlinear_solver.options['iprint'] = 2
         self.nonlinear_solver.options['maxiter'] = 500
-        self.nonlinear_solver.options['atol'] = 1e-7
-        self.nonlinear_solver.options['rtol'] = 1e-7
+        self.nonlinear_solver.options['atol'] = 1e-5
+        self.nonlinear_solver.options['rtol'] = 1e-3
 
         line_search = newton.linesearch = om.ArmijoGoldsteinLS(
                                     bound_enforcement='vector',
@@ -136,7 +136,7 @@ class ExampleMDA(om.Group):
 class DOC(om.ExplicitComponent):
 
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
 
     def setup(self):
         n = self.options['vec_size']
@@ -220,7 +220,7 @@ class DOC(om.ExplicitComponent):
 class Dpm(om.ExplicitComponent):
 
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
 
     def setup(self):
         n = self.options['vec_size']
@@ -271,7 +271,7 @@ class Dpm(om.ExplicitComponent):
 class CL_constraint(om.ExplicitComponent):
     
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
 
     def setup(self):
         n = self.options['vec_size']
@@ -300,7 +300,7 @@ class CL_constraint(om.ExplicitComponent):
 class WingLoad_constraint(om.ExplicitComponent):
     
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
 
     def setup(self):
         n = self.options['vec_size']
@@ -320,7 +320,7 @@ class WingLoad_constraint(om.ExplicitComponent):
         WL = inputs['WL']
         WL_target = inputs['WL_target']
 
-        outputs['WL_constraint'] = WL - WL_target
+        outputs['WL_constraint'] = WL_target - WL
 
     def compute_partials(self, inputs, partials):
 
@@ -332,7 +332,117 @@ from uqpce.mdao import interface
 import os
 from fixed import optimal
 
-def uqpce_main_script():
+
+def configure_subsystems(prob,vector_size=1):
+
+    prob.model.add_subsystem(
+        'MDA', 
+        ExampleMDA(vec_size=vector_size), 
+        promotes_inputs=(['V_cruise', 'S', 'AR', 'SFC_tech',
+                          'delta_eta', 'delta_kv','delta_alpha',
+                          'delta_CD0','delta_ks','delta_e',
+                          'delta_fsys','delta_kw','delta_p']), 
+        promotes_outputs=['m_fuel','m_empty','m_engine',
+                          'm_total','LD','CL','CD','WL','SFC','R']
+    )
+
+   # prob.model.add_subsystem(
+   #     'WingLoad_constraint', 
+   #     WingLoad_constraint(vec_size=vector_size), 
+   #     promotes_inputs=['WL'], 
+   #     promotes_outputs=['WL_constraint']
+   # )
+
+    prob.model.add_subsystem(
+        'LiftCoeff_constraint', 
+        CL_constraint(vec_size=vector_size), 
+        promotes_inputs=['CL'], 
+        promotes_outputs=['CL_constraint']
+    )
+
+    prob.model.add_subsystem(
+        'DOC_objective', 
+        DOC(vec_size=vector_size), 
+        promotes_inputs=(['V_cruise','SFC_tech',
+                          'delta_beta','delta_Cf','R','m_fuel']), 
+        promotes_outputs=['DOC']
+    )
+
+    prob.model.add_subsystem(
+        'DPM_objective', 
+        Dpm(vec_size=vector_size), 
+        promotes_inputs=['DOC','R'], 
+        promotes_outputs=['Dpm']
+    )
+
+
+def main():
+    """
+    This script will run two dterministic optimizations:
+        1) C_L constrained problem
+        2) Wing Loading Constrained problem
+    
+    Then, the optimal values from each run will be fed into uqpce
+    To generate probability density plots of the model responses 
+    at the two dtermninistic optima.
+
+    Finally, the script will perform 6 optimzations under uncertainty:
+        1) mean C_L constrained problem
+        2) lower C_L confidence interval constrained problem
+        3) upper C_L confidence interval constrained problem
+        4) mean Wing_Loading constrained problem
+        2) lower  Wing_Loading confidence interval constrained problem
+        3) upper  Wing_Loading confidence interval constrained problem
+
+    In the end, we should be rewarded with 2 + 6 = 8 sets of plots...
+    """
+
+    #~~~~~Deterministic Optimizations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    determ_prob = om.Problem()
+
+    configure_subsystems(determ_prob)
+    
+    # Optimizer
+    determ_prob.driver = om.ScipyOptimizeDriver()
+    determ_prob.driver.options['optimizer'] = 'SLSQP'
+    determ_prob.driver.options['maxiter'] = 1000
+    determ_prob.driver.options['tol'] = 1e-12
+    determ_prob.driver.options['disp'] = True
+
+    #prob.model.set_input_defaults('aircraft.DOC.V')
+
+    # Declare Design variables
+    determ_prob.model.add_design_var('S', lower=100.0, upper=180.0, ref=124.6)
+    determ_prob.model.add_design_var('AR', lower=7.0, upper=50.0, ref=9.45)
+    determ_prob.model.add_design_var('V_cruise', lower=200, upper=260, ref=1)
+    determ_prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
+
+    # Declare Objective Function
+    determ_prob.model.add_objective('DOC', ref=1.0e4)
+    
+    determ_prob.model.add_constraint('m_fuel', lower=1000.0, upper=50000.0, ref=16000.0)
+    determ_prob.model.add_constraint('CL_constraint', lower=0, upper = 0.53, ref=0.1)
+    #determ_prob.model.add_constraint('WL_constraint', lower=-5905, upper = 5905, ref=0.1)
+
+    determ_prob.setup()
+    initialize(determ_prob)
+
+    determ_prob.run_driver()
+    #display_results(determ_prob)
+
+    S_opt = determ_prob.get_val('S')
+    AR_opt = determ_prob.get_val('AR')
+    V_cruise_opt = determ_prob.get_val('V_cruise')
+    SFC_tech_opt = determ_prob.get_val('SFC_tech')
+
+    optimal = {
+       'V' :  V_cruise_opt,
+       'AR' : AR_opt,
+       'S' : S_opt,
+       'SFC_tech' : SFC_tech_opt
+    }
+
     #---------------------------------------------------------------------------
     #                               Input Files
     #---------------------------------------------------------------------------
@@ -353,55 +463,21 @@ def uqpce_main_script():
         sig, run_matrix
     ) = interface.initialize(input_file, matrix_file)
     
-    prob = om.Problem()
-    
-    #---------------------------------------------------------------------------
-    #                   Add Subsystems to Problem
-    #---------------------------------------------------------------------------
-    
-    prob.model.add_subsystem(
-        'MDA', 
-        ExampleMDA(vec_size=resp_cnt), 
-        promotes_inputs=(['V_cruise', 'S', 'AR', 'SFC_tech',
-                          'delta_eta', 'delta_kv','delta_alpha',
-                          'delta_CD0','delta_ks','delta_e',
-                          'delta_fsys','delta_kw','delta_p']), 
-        promotes_outputs=['m_fuel','m_empty','m_engine',
-                          'm_total','CL','CD','WL','SFC','R']
-    )
+    uncertain_prob = om.Problem()
 
+    uncertain_prob.driver = om.ScipyOptimizeDriver()
+    uncertain_prob.driver.options['optimizer'] = 'SLSQP'
+    uncertain_prob.driver.options['maxiter'] = 1000
+    uncertain_prob.driver.options['tol'] = 1e-10
+    uncertain_prob.driver.options['disp'] = True
 
-    prob.model.add_subsystem(
-        'WingLoad_constraint', 
-        WingLoad_constraint(vec_size=resp_cnt), 
-        promotes_inputs=['WL'], 
-        promotes_outputs=['WL_constraint']
-    )
+    uncertain_prob.driver.options['debug_print'] = [
+    'desvars',
+    'objs',
+    'nl_cons',
+    ]
 
-    prob.model.add_subsystem(
-        'LiftCoeff_constraint', 
-        CL_constraint(vec_size=resp_cnt), 
-        promotes_inputs=['CL'], 
-        promotes_outputs=['CL_constraint']
-    )
-
-
-    prob.model.add_subsystem(
-        'DOC_objective', 
-        DOC(vec_size=resp_cnt), 
-        promotes_inputs=(['V_cruise','SFC_tech',
-                          'delta_beta','delta_Cf','R','m_fuel']), 
-        promotes_outputs=['DOC']
-    )
-
-    prob.model.add_subsystem(
-        'DPM_objective', 
-        Dpm(vec_size=resp_cnt), 
-        promotes_inputs=['DOC','R'], 
-        promotes_outputs=['Dpm']
-    )
-
-
+    configure_subsystems(uncertain_prob,vector_size=resp_cnt)
 
     #---------------------------------------------------------------------------
     #                   Add UQPCE Group to Problem
@@ -409,6 +485,9 @@ def uqpce_main_script():
 
     probailistic_DOC_list = ['DOC:resampled_responses','DOC:ci_lower',
                              'DOC:ci_upper','DOC:mean','DOC:mean_plus_var']
+    
+    probailistic_Dpm_list = ['Dpm:resampled_responses','Dpm:ci_lower',
+                             'Dpm:ci_upper','Dpm:mean','Dpm:mean_plus_var']
     
     probailistic_m_fuel_list = ['m_fuel:resampled_responses','m_fuel:ci_lower',
                                 'm_fuel:ci_upper','m_fuel:mean','m_fuel:mean_plus_var',]
@@ -436,8 +515,15 @@ def uqpce_main_script():
                                    'CL_constraint:ci_upper',
                                    'CL_constraint:mean',
                                    'CL_constraint:mean_plus_var']
+    
+  #  probailistic_WL_constr_list = ['WL_constraint:resampled_responses',
+  #                                 'WL_constraint:ci_lower',
+  #                                 'WL_constraint:ci_upper',
+  #                                 'WL_constraint:mean',
+  #                                 'WL_constraint:mean_plus_var']
 
     probailistic_output_list = (probailistic_DOC_list +
+                                probailistic_Dpm_list +
                                 probailistic_m_fuel_list +
                                 probailistic_m_empty_list +
                                 probailistic_m_engine_list +
@@ -445,9 +531,10 @@ def uqpce_main_script():
                                 probailistic_CL_list +
                                 probailistic_CD_list +
                                 probailistic_SFC_list +
-                                probailistic_CL_constr_list)
+                                probailistic_CL_constr_list )
+   #                             probailistic_WL_constr_list)
 
-    prob.model.add_subsystem(
+    uncertain_prob.model.add_subsystem(
         'UQPCE',
         UQPCEGroup(
             significance=sig,
@@ -457,115 +544,56 @@ def uqpce_main_script():
             tail='both',
             epistemic_cnt=epistemic_cnt,
             aleatory_cnt=aleatory_cnt,
-            uncert_list=['DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
+            uncert_list=['DOC','Dpm', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
             tanh_omega=1e-3,
-            sample_ref0=[ 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0,0.0],
-            sample_ref=[ 5.0e4, 1000, 1000, 1000, 1000,0.1,0.1,0.1,0.1],
+            sample_ref0=[ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0.0,0.0],
+            sample_ref=[ 5.0e4, 0.01, 1000, 1000, 1000, 1000,0.1,0.1,0.0001,0.1],
         ),
-        promotes_inputs=[ 'DOC', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
+        promotes_inputs=[ 'DOC','Dpm', 'm_fuel','m_empty','m_engine','m_total','CL','CD','SFC','CL_constraint'],
         promotes_outputs= probailistic_output_list
     )
 
+    # Declare Design variables
+    uncertain_prob.model.add_design_var('S', lower=100.0, upper=180.0, ref=124.6)
+    uncertain_prob.model.add_design_var('AR', lower=7.0, upper=50.0, ref=9.45)
+    uncertain_prob.model.add_design_var('V_cruise', lower=200, upper=260, ref=1)
+    uncertain_prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
 
+    # Declare Objective Function
+    uncertain_prob.model.add_objective('DOC:mean', ref=1.0e4)
+    
+    uncertain_prob.model.add_constraint('m_fuel:mean', lower=1000.0, upper=50000.0, ref=16000.0)
+    uncertain_prob.model.add_constraint('CL_constraint:ci_lower',lower=0.0,upper=0.53, ref0=1, ref=2)
+    
+    #same evvect as expected
+    #uncertain_prob.model.add_constraint('CL:mean',upper=0.53)
+    #uncertain_prob.model.add_constraint('CL_constraint:mean',equals=0.0)
+
+
+    uncertain_prob.setup()
+    initialize(uncertain_prob, params=optimal)
+    interface.set_vals(uncertain_prob,variables,run_matrix)
+
+    uncertain_prob.run_model()
+
+    response = get_values(uncertain_prob, copybool=True)
  
+    initialize(uncertain_prob)
 
+    uncertain_prob.run_driver()
 
-    #Assign objective function and constraint in UQPCE formatting
+    optimized = get_values(uncertain_prob)
+
+    plot_objective(response, optimized)
+
+    plot_coefficients(response, optimized)
     
-    #CL_con = 'CL_constraint:ci_lower'
-    
+    #plot_constraints(response,optimized)
 
-    prob.model.set_input_defaults('S', val=optimal['S'], units='m**2')
-    prob.model.set_input_defaults('AR', val=optimal['AR'])
-    prob.model.set_input_defaults('V_cruise', val=optimal['V'], units='m/s')
-    prob.model.set_input_defaults('SFC_tech', val=optimal['SFC_tech'])
-
-    prob.driver = om.pyOptSparseDriver(optimizer='SLSQP')
-
-    prob.model.add_design_var('S',lower=100.0,upper=180.0,ref=124.6,)
-
-    prob.model.add_design_var('AR',lower=7.0,upper=50.0,ref=9.45)
-
-    prob.model.add_design_var('V_cruise',lower=200.0,upper=260.0,ref=230.0)
-
-    prob.model.add_design_var('SFC_tech',lower=-1.0,upper=1.0,ref=1.0)
-
-    prob.model.add_objective('DOC:mean',ref=2.0e4)
-
-    
-    prob.model.add_constraint('CL_constraint:ci_upper',lower=0.0, ref0=1, ref=2)
-
-    #prob.model.add_constraint('CL_constraint:ci_upper',upper=0.5, ref0=1, ref=2)
+    plot_mass(response,optimized)
 
 
-    #prob.model.add_constraint(
-    #    'CL:mean',
-    #    upper=0.53
-    #)
-
-
-    prob.setup()
-
-    initialize(prob)
-    interface.set_vals(
-    prob,
-    variables,
-    run_matrix,
-)
-
-    prob.run_model()
-
-    DOC_dist = prob.get_val('DOC:resampled_responses').copy().ravel()
-    DOC_ci_lower = prob.get_val('DOC:ci_lower').copy().item()
-    DOC_ci_upper = prob.get_val('DOC:ci_upper').copy().item()
-    DOC_mu = prob.get_val('DOC:mean').copy().item()
-    DOC_var_plus_mu = prob.get_val('DOC:mean_plus_var').copy().item()
-    DOC_var = DOC_var_plus_mu - DOC_mu
-
-    prob.check_totals(of=['DOC:mean','CL:mean',
-        'CL:ci_lower',
-        'CL:ci_upper',],wrt=['S', 'AR', 'SFC_tech','V_cruise'],
-                      compact_print=True, method='fd')
-    #initialize(prob)
-    prob.run_driver()
-
-    DOC_opt_dist = prob.get_val('DOC:resampled_responses').ravel()
-    DOC_opt_ci_lower = prob.get_val('DOC:ci_lower').item()
-    DOC_opt_ci_upper = prob.get_val('DOC:ci_upper').item()
-    DOC_opt_mu = prob.get_val('DOC:mean').item()
-    DOC_opt_var_plus_mu = prob.get_val('DOC:mean_plus_var').item()
-    DOC_opt_var = DOC_opt_var_plus_mu - DOC_opt_mu
-
-    
-    fig, ax = plt.subplots()
-
-    #fig.suptitle(r"Direct Operating Cost PDFs")
-
-    ax.hist(DOC_dist,bins=100,density=True,color='purple',alpha=0.5)
-    ax.axvline(DOC_ci_lower, color='red', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
-    ax.axvline(DOC_ci_upper, color='red', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
-    #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
-    #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
-    #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
-    
-    ax.hist(DOC_opt_dist,bins=100,density=True,color='green',alpha=0.5)
-    ax.axvline(DOC_opt_ci_lower, color='blue', linewidth=2,linestyle=':', label=rf"CI lower $\approx$ {DOC_ci_lower:.4f}")
-    ax.axvline(DOC_opt_ci_upper, color='blue', linewidth=2,linestyle=':', label=rf"CI upper $\approx$ {DOC_ci_upper:.4f}")
-    #ax.set_xlabel(r"$\mathrm{DOC}$ [USD]",labelpad=15,fontsize=18)
-    #ax.set_ylabel(r"Probability Density",labelpad=10,fontsize=18)
-    #ax.set_title(rf"Estimated DOC Distribution: $\mu = {DOC_mu:.4f}, \ \ \sigma^2 = {DOC_var:.4e}$",fontsize=24)
-    ax.legend()
-
-
-    plt.show()
-
-
-    
-   
- 
-
-def main():
-    uqpce_main_script()
+    plot_sfc(response,optimized)
 
 if __name__ == "__main__":
     main()

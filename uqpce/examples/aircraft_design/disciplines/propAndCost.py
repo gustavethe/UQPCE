@@ -21,8 +21,8 @@ class Propulsion(om.ExplicitComponent):
         #model variable (output from other component)
 
         #uncertain parameters
-        self.add_input('delta_eta',val=np.ones(n), units=None, shape=(n,))
-        self.add_input('delta_kv',val=np.ones(n), units=None, shape=(n,))
+        self.add_input('delta_eta', val=np.ones(n), units=None, shape=(n,))
+        self.add_input('delta_kv', val=np.ones(n), units=None, shape=(n,))
         
         #tuning parameters
         self.add_input('eta_base',units=None)
