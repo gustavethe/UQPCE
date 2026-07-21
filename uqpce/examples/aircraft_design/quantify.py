@@ -8,6 +8,8 @@ from disciplines.total_mass_comp import *
 from disciplines.propAndCost import *
 from disciplines.weight import *
 from disciplines.objective import *
+from disciplines.doc import *
+from disciplines.dpm import *
 
 from helpers import *
 from sweepers import *
@@ -133,141 +135,6 @@ class ExampleMDA(om.Group):
                            )
         #^######################################################^#
 
-class DOC(om.ExplicitComponent):
-
-    def initialize(self):
-        self.options.declare('vec_size', default=1, types=int)
-
-    def setup(self):
-        n = self.options['vec_size']
-
-        #proposed design variables
-        self.add_input('SFC_tech', units=None)
-        self.add_input('V_cruise', units='m/s')
-        
-        #model variable (output from other component)
-        self.add_input('R', units='m', shape=(n,))
-        self.add_input('m_fuel', units='kg',shape=(n,)) 
-
-        #uncertain parameters
-        self.add_input('delta_Cf',val=np.ones(n),units=None,shape=(n,))
-        self.add_input('delta_beta',val=np.ones(n), units=None,shape=(n,))
-
-        #tuning parameters
-        self.add_input('Cf_base', units='USD/kg')
-        self.add_input('beta_base', units=None)
-        
-        #constant parameters
-        self.add_input('C_time', val=parameters['C_time'], units='USD/s')
-        self.add_input('k_acq', val=parameters['k_acq'], units=None)
-        self.add_input('C_eng_ref', val=parameters['C_eng_ref'], units='USD')
-
-        #outputs
-        self.add_output('DOC', units='USD',shape=(n,))
-       
-    def setup_partials(self):
-        n = self.options['vec_size']
-        arange = np.arange(n)
-
-        self.declare_partials('DOC', ['V_cruise', 'SFC_tech', 'Cf_base', 'C_time', 'k_acq', 'C_eng_ref', 'beta_base'])
-        self.declare_partials('DOC', ['R', 'm_fuel', 'delta_Cf', 'delta_beta'], rows=arange, cols=arange)
-
-    def compute(self, inputs, outputs):
- 
-        SFC_tech = inputs['SFC_tech']
-        V = inputs['V_cruise']
-        Cf_base = inputs['Cf_base']
-        m_fuel = inputs['m_fuel']
-        C_time = inputs['C_time']
-        R = inputs['R']
-        k_acq = inputs['k_acq']
-        C_eng_ref = inputs['C_eng_ref']
-        beta_base = inputs['beta_base']
-        delta_beta = inputs['delta_beta']
-        delta_Cf = inputs['delta_Cf']
-
-        outputs['DOC'] = DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-        
-    def compute_partials(self, inputs, partials):
-        SFC_tech = inputs['SFC_tech']
-        V = inputs['V_cruise']
-        Cf_base = inputs['Cf_base']
-        m_fuel = inputs['m_fuel']
-        C_time = inputs['C_time']
-        R = inputs['R']
-        k_acq = inputs['k_acq']
-        C_eng_ref = inputs['C_eng_ref']
-        beta_base = inputs['beta_base']
-        delta_Cf = inputs['delta_Cf']
-        delta_beta = inputs['delta_beta']
-
-        # DOC = Cf_base * delta_Cf * m_fuel + C_time * (R/V) + k_acq * C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-
-        partials['DOC', 'm_fuel'] = Cf_base * delta_Cf
-        partials['DOC', 'R'] = C_time / V
-        partials['DOC', 'V_cruise'] = -C_time * (R / V**2)
-        partials['DOC', 'SFC_tech'] = k_acq * C_eng_ref * (beta_base * delta_beta)
-
-        partials['DOC', 'Cf_base'] = delta_Cf * m_fuel
-        partials['DOC', 'C_time'] = R / V
-        partials['DOC', 'k_acq'] = C_eng_ref * (1 + beta_base * delta_beta * SFC_tech)
-        partials['DOC', 'C_eng_ref'] = k_acq * (1 + beta_base * delta_beta * SFC_tech)
-        partials['DOC', 'beta_base'] = (k_acq * C_eng_ref) * (delta_beta * SFC_tech)
-
-        partials['DOC', 'delta_Cf'] = Cf_base * m_fuel
-        partials['DOC', 'delta_beta'] = (k_acq * C_eng_ref) * (beta_base * SFC_tech)
-
-class Dpm(om.ExplicitComponent):
-
-    def initialize(self):
-        self.options.declare('vec_size', default=1, types=int)
-
-    def setup(self):
-        n = self.options['vec_size']
-
-        #proposed design variables
-        #n/a
-
-        #model variable (output from other component)
-        self.add_input('DOC', units='USD', shape=(n,))
-        self.add_input('R', units='km',shape=(n,))
-
-        #uncertain parameters
-        #n/a
-
-        #tuning parameters
-        #n/a
-
-        #constant parameters
-        self.add_input('N_pax', val=parameters['N_pax'])
-
-        #outputs
-        self.add_output('Dpm', shape=(n,))
-
-    def setup_partials(self):
-        n = self.options['vec_size']
-        arange = np.arange(n)
-
-        self.declare_partials('Dpm', ['N_pax'])
-        self.declare_partials('Dpm', ['R', 'DOC'], rows=arange, cols=arange)
-
-    def compute(self, inputs, outputs):
-
-        N_pax = inputs['N_pax']
-        DOC = inputs['DOC']
-        R = inputs['R']
-
-        outputs['Dpm'] = DOC / (N_pax * R)
-    
-    def compute_partials(self, inputs, partials):
-        N_pax = inputs['N_pax']
-        DOC = inputs['DOC']
-        R = inputs['R']
-
-        partials['Dpm', 'R'] = -(DOC / (N_pax * R**2))
-        partials['Dpm', 'N_pax'] = -(DOC / (N_pax**2 * R))
-        partials['Dpm', 'DOC'] = 1 / (N_pax * R)
-        
 class CL_constraint(om.ExplicitComponent):
     
     def initialize(self):
@@ -326,6 +193,47 @@ class WingLoad_constraint(om.ExplicitComponent):
 
         partials['WL_constraint', 'WL'] = 1
 
+class Objective(om.ExplicitComponent):
+    
+    def setup(self):
+        #n = self.options['vec_size']
+
+        #proposed design variables
+        self.add_input('DOC:mean', units='USD')
+        self.add_input('DOC:mean_plus_var', units='USD')
+        self.add_input('lambda',units=None)
+
+        #outputs
+        self.add_output('DOC:mean_plus_lambda_variance',val=40000000.0, units='USD')
+       
+    def setup_partials(self):
+        #n = self.options['vec_size']
+
+        self.declare_partials('DOC:mean_plus_lambda_variance','DOC:mean',method='exact')
+        self.declare_partials('DOC:mean_plus_lambda_variance','DOC:mean_plus_var',method='exact')
+
+        
+    def compute(self, inputs, outputs):
+        lambd = inputs['lambda']
+        var = inputs['DOC:mean_plus_var'] - inputs['DOC:mean']
+        mu = inputs['DOC:mean']
+
+        outputs['DOC:mean_plus_lambda_variance'] = mu + lambd*var
+
+ 
+
+    def compute_partials(self, inputs, partials):
+
+        lambd = inputs['lambda']
+        var = inputs['DOC:mean_plus_var'] - inputs['DOC:mean']
+        mu = inputs['DOC:mean']
+        beta = lambd-1
+
+        partials['DOC:mean_plus_lambda_variance','DOC:mean_plus_var'] = 1+ beta
+        partials['DOC:mean_plus_lambda_variance','DOC:mean'] = -beta
+
+        
+
 
 from uqpce.mdao.uqpcegroup import UQPCEGroup
 from uqpce.mdao import interface
@@ -377,26 +285,6 @@ def configure_subsystems(prob,vector_size=1):
 
 
 def main():
-    """
-    This script will run two dterministic optimizations:
-        1) C_L constrained problem
-        2) Wing Loading Constrained problem
-    
-    Then, the optimal values from each run will be fed into uqpce
-    To generate probability density plots of the model responses 
-    at the two dtermninistic optima.
-
-    Finally, the script will perform 6 optimzations under uncertainty:
-        1) mean C_L constrained problem
-        2) lower C_L confidence interval constrained problem
-        3) upper C_L confidence interval constrained problem
-        4) mean Wing_Loading constrained problem
-        2) lower  Wing_Loading confidence interval constrained problem
-        3) upper  Wing_Loading confidence interval constrained problem
-
-    In the end, we should be rewarded with 2 + 6 = 8 sets of plots...
-    """
-
     #~~~~~Deterministic Optimizations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     determ_prob = om.Problem()
@@ -559,11 +447,18 @@ def main():
     uncertain_prob.model.add_design_var('V_cruise', lower=200, upper=260, ref=1)
     uncertain_prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
 
+    uncertain_prob.model.add_subsystem('variable_risk_objective', Objective(),
+                                       promotes_inputs=['DOC:mean','DOC:mean_plus_var','lambda'],
+                                       promotes_outputs=['DOC:mean_plus_lambda_variance'])
+
+    uncertain_prob.model.add_objective('DOC:mean_plus_lambda_variance', ref=1.0e5)
+    
     # Declare Objective Function
-    uncertain_prob.model.add_objective('DOC:mean', ref=1.0e4)
+    #uncertain_prob.model.add_objective('DOC:mean_plus_var', ref=1.0e4)
     
     uncertain_prob.model.add_constraint('m_fuel:mean', lower=1000.0, upper=50000.0, ref=16000.0)
-    uncertain_prob.model.add_constraint('CL_constraint:ci_lower',lower=0.0,upper=0.53, ref0=1, ref=2)
+    uncertain_prob.model.add_constraint('CL:ci_lower',upper=0.4953, ref0=1, ref=2)
+    uncertain_prob.model.add_constraint('CL:ci_upper',upper=0.5690, ref0=1, ref=2)
     
     #same evvect as expected
     #uncertain_prob.model.add_constraint('CL:mean',upper=0.53)
@@ -571,6 +466,7 @@ def main():
 
 
     uncertain_prob.setup()
+    uncertain_prob.model.set_val('lambda',3)
     initialize(uncertain_prob, params=optimal)
     interface.set_vals(uncertain_prob,variables,run_matrix)
 
@@ -590,10 +486,10 @@ def main():
     
     #plot_constraints(response,optimized)
 
-    plot_mass(response,optimized)
+    #plot_mass(response,optimized)
 
 
-    plot_sfc(response,optimized)
+    #plot_sfc(response,optimized)
 
 if __name__ == "__main__":
     main()

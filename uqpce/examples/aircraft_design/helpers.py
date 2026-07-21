@@ -1,5 +1,6 @@
 from fixed import *
 import matplotlib.pyplot as plt
+import numpy as np
 
 def display_results(prob):
     print('\n~~~~Outputs~~~~\n\n')
