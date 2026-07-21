@@ -12,7 +12,7 @@ from disciplines.weight import *
 
 from fixed import parameters
 from helpers import initialize_og
-from optimize import CoupledGroup
+from deprecated.optimize import CoupledGroup
 
 
 TUNING_NAMES = [
