@@ -1,13 +1,13 @@
 import openmdao.api as om
 import numpy as np
 from fixed import parameters
-#hi
+
 class TotalMassComp(om.ExplicitComponent):
     """
     Component for "TotalMassComp" box containing analytical derivatives
     """
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
     
     def setup(self):
         n = self.options['vec_size']
@@ -35,7 +35,7 @@ class TotalMassComp(om.ExplicitComponent):
         n = self.options['vec_size']
         arange = np.arange(n)
         
-        self.declare_partials('m_total', ['m_empty', 'm_payload'])
+        self.declare_partials('m_total', ['m_payload'])
         self.declare_partials('m_total', ['m_empty', 'm_fuel'], rows=arange, cols=arange)
 
     def compute(self, inputs, outputs):

@@ -2,7 +2,7 @@ import openmdao.api as om
 import numpy as np
 from fixed import parameters
 
-class Propulsion(om.ExplicitComponent):
+class PropulsionComp(om.ExplicitComponent):
     """
     Component for "PropulsionComp" box containing analytical derivatives
     """

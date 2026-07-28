@@ -1,6 +1,7 @@
 import openmdao.api as om
 import numpy as np
 from fixed import parameters
+
 class DOC(om.ExplicitComponent):
 
     def initialize(self):
@@ -10,7 +11,7 @@ class DOC(om.ExplicitComponent):
         n = self.options['vec_size']
 
         #proposed design variables
-        self.add_input('SFC_tech', units=None)
+        self.add_input('SFC_tech', units="unitless")
         self.add_input('V_cruise', units='m/s')
         
         #model variable (output from other component)
@@ -18,16 +19,16 @@ class DOC(om.ExplicitComponent):
         self.add_input('m_fuel', units='kg',shape=(n,)) 
 
         #uncertain parameters
-        self.add_input('delta_Cf',val=np.ones(n),units=None,shape=(n,))
-        self.add_input('delta_beta',val=np.ones(n), units=None,shape=(n,))
+        self.add_input('delta_Cf',val=np.ones(n),units="unitless",shape=(n,))
+        self.add_input('delta_beta',val=np.ones(n), units="unitless",shape=(n,))
 
         #tuning parameters
         self.add_input('Cf_base', units='USD/kg')
-        self.add_input('beta_base', units=None)
+        self.add_input('beta_base', units="unitless")
         
         #constant parameters
         self.add_input('C_time', val=parameters['C_time'], units='USD/s')
-        self.add_input('k_acq', val=parameters['k_acq'], units=None)
+        self.add_input('k_acq', val=parameters['k_acq'], units="unitless")
         self.add_input('C_eng_ref', val=parameters['C_eng_ref'], units='USD')
 
         #outputs
