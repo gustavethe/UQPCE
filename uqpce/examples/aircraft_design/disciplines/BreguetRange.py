@@ -3,7 +3,9 @@ import numpy as np
 from fixed import parameters
 
 class BreguetRangeComp(om.ExplicitComponent):
-
+    """
+    Component for "BreguetRangeComp" box containing analytical derivatives
+    """
     def initialize(self):
         self.options.declare('vec_size', default=1, types=int)
 

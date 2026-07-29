@@ -3,7 +3,9 @@ import openmdao.api as om
 from fixed import parameters
 
 class AeroComp(om.ExplicitComponent):
-
+    """
+    Component for "AeroComp" box containing analytical derivatives
+    """
     def initialize(self):
         self.options.declare('vec_size', default=1, types=int)
 

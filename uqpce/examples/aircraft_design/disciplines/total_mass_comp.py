@@ -29,7 +29,7 @@ class TotalMassComp(om.ExplicitComponent):
         self.add_input('m_payload', val=parameters['m_payload_design'], units='kg')
 
         #outputs
-        self.add_output('m_total', units='kg',shape=(n,))
+        self.add_output('m_total', units='kg', shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']

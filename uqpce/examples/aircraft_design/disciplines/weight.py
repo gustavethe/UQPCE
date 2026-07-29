@@ -3,7 +3,9 @@ import numpy as np
 from fixed import parameters
 
 class WeightsComp(om.ExplicitComponent):
-
+    """
+    Component for "WeightsComp" box containing analytical derivatives
+    """
     def initialize(self):
         self.options.declare('vec_size', default=1, types=int)
 
@@ -138,7 +140,6 @@ class WeightsComp(om.ExplicitComponent):
         partials['m_empty', 'V_ref'] = -(p_base * delta_p) * m_wing / V_ref
 
         partials['m_empty', 'm_fuse'] = 1.0
-
 
 class EngineWeightComp(om.ExplicitComponent):
     """

@@ -22,7 +22,7 @@ parameters = {
     "SFC_tech": 0.0,                # -
 
     "Cf_base": 0.74,                # USD/kg
-    "C_time":0.472,                 # USD/s; =1700 USD/hr
+    "C_time": 0.472,                # USD/s; =1700 USD/hr
     "k_acq": 0.00142,               # -
     "C_eng_ref": 2.2e7,             # USD
 

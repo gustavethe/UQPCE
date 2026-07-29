@@ -1,16 +1,16 @@
 import openmdao.api as om
 import os
+import numpy as np
 from omjlcomps import JuliaExplicitComp
 import juliacall; jl = juliacall.newmodule("Julia")
 
 from uqpce.mdao.uqpcegroup import UQPCEGroup
 from uqpce.mdao import interface
 
-# from organize import configure_subsystems, initialize
+from organize import initialize
 from helpers import plot_objective, plot_coefficients, get_values
-import openmdao.api as om
-import numpy as np
 
+#vvv DELETE WHEN ALL COMPONENTS CONVERTED TO JULIA vvv
 from disciplines.BreguetRange import BreguetRangeComp
 from disciplines.aero import AeroComp
 from disciplines.total_mass_comp import TotalMassComp
@@ -19,7 +19,7 @@ from disciplines.weight import EngineWeightComp, WeightsComp
 from disciplines.doc import DOC
 from disciplines.dpm import Dpm
 
-from fixed import parameters, tuning
+from fixed import parameters
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 jl.include(os.path.join(current_dir, 'disciplines_Julia', 'propulsion.jl'))
@@ -113,7 +113,7 @@ class CL_constraint(om.ExplicitComponent):
         n = self.options['vec_size']
         arange = np.arange(n)
 
-        self.add_input('CL', shape=(n,))
+        self.add_input('CL', units="unitless", shape=(n,))
 
         self.add_input('CL_target', val=0.53)
 
@@ -235,28 +235,6 @@ def configure_subsystems(prob, vector_size=1):
         promotes_outputs=['Dpm']
     )
 
-def initialize(prob, params=parameters):
-    prob.set_val('V_cruise', params['V_cruise'])
-    prob.set_val('S', params['S'])
-    prob.set_val('AR', params['AR'])
-    prob.set_val('SFC_tech', params['SFC_tech'])
-
-    # Tuning Parameters
-    prob.set_val('e_base', parameters['e_oswald_base'])
-    prob.set_val('C_D0_base', parameters['CD0_base'])
-    prob.set_val('Cf_base', parameters['Cf_base'])
-    prob.set_val('fsys_base', tuning['fsys_base'])          # fraction of total mass comprising 'systems' and stuff
-    prob.set_val('kw_base', tuning['kw_base'])              # wing weight regression/fit tuning parameter
-    prob.set_val('p_base', tuning['p_base'])                # off (faster) design velocity wing weight penalty exponent parameter
-    prob.set_val('eta_base', tuning['eta_base'])            # tuning paramter to change effect SFC_tech has on changing SFC_ref
-    prob.set_val('kv_base', tuning['kv_base'])              # off design veloicty penalty to increase SFC qudratically about V_ref
-    prob.set_val('beta_base', tuning['beta_base'])          # strength of increase/decrease of amortized engine cost due to SFC_tech
-    prob.set_val('alpha_base', tuning['alpha_base'])        # strength of increase/decrease of engine mass due to SFC_tech
-    prob.set_val('ks_base', tuning['ks_base'])              # pretty hard to estimate this. it represents the sensitivty 
-                                                            # of the drag coefficient to changes in planform area linearized 
-                                                            # about S_ref. I have no idea what to put for this, but I chose a 
-                                                            # small value above. Note units are 1/m**2
-
 def deterministic_optimization(prob):
     # Optimizer
     prob.driver = om.ScipyOptimizeDriver()
@@ -290,7 +268,7 @@ def deterministic_optimization(prob):
     SFC_tech_opt = prob.get_val('SFC_tech')
 
     optimal = {
-       'V_cruise':  V_cruise_opt,
+       'V_cruise': V_cruise_opt,
        'AR': AR_opt,
        'S': S_opt,
        'SFC_tech': SFC_tech_opt
@@ -348,6 +326,7 @@ def generate_output_list():
     )
     
     return probabilistic_output_list
+
 class Uncertain_Objective(om.ExplicitComponent):
     
     def setup(self):
