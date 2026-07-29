@@ -1,44 +1,38 @@
 import openmdao.api as om
 import numpy as np
 from fixed import parameters
-#hi
+
 class BreguetRangeComp(om.ExplicitComponent):
-    """
-    Compute Breguet range from fuel mass
-
-    Inputs:
-    Design Varibale (scalar i think): V_cruise [m/s]
-    Vector inputs (UQ): SFC [1/s], LD [], m_total [kg], m_fuel [kg]
-
-    Outputs:
-    Vector output: R [m]
-    """
 
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
 
     def setup(self):
         n = self.options['vec_size']
-        arange = np.arange(n)
+       
+        self.add_input('V_cruise', units='m/s') #design variable
 
-        self.add_input('V', val = parameters['V_ref'], units='m/s') #design variable
+        self.add_input('SFC',units='1/s',
+                       shape=(n,)) #vector inputs
+        self.add_input('LD',units="unitless",
+                        shape=(n,))
+        self.add_input('m_total', units='kg',
+                       shape=(n,))
+        self.add_input('m_fuel', units='kg', 
+                       shape=(n,))
 
-        self.add_input('SFC', val = parameters['SFC_ref'], shape=(n,), units='1/s') #vector inputs
-        self.add_input('LD', val = 16, shape=(n,))
-        self.add_input('m_total', val = 50000, shape=(n,), units='kg')
-        self.add_input('m_fuel', val = 10000, units='kg', shape=(n,))
-
-        self.add_output('R', val = 1e6, shape=(n,), units='m')
+        self.add_output('R', units='m',
+                        shape=(n,))
 
     def setup_partials(self):
         n= self.options['vec_size']
         indices = np.arange(n)
 
-        self.declare_partials('R', ['V'], rows= indices, cols=np.zeros(n, dtype=int))
+        self.declare_partials('R', ['V_cruise'], rows= indices, cols=np.zeros(n, dtype=int))
         self.declare_partials('R', ['SFC', 'LD', 'm_total', 'm_fuel'], rows=indices, cols=indices)
 
     def compute (self, inputs, outputs):
-        V = inputs['V']
+        V = inputs['V_cruise']
         SFC = inputs['SFC']
         LD = inputs['LD']
         m_total = inputs['m_total']
@@ -47,7 +41,7 @@ class BreguetRangeComp(om.ExplicitComponent):
         outputs['R'] = ((V / SFC) * (LD) * np.log(m_total / (m_total - m_fuel)))
 
     def compute_partials(self, inputs, partials): 
-        V = inputs['V']
+        V = inputs['V_cruise']
         SFC = inputs['SFC']
         LD = inputs['LD']
         m_total = inputs['m_total']
@@ -57,7 +51,7 @@ class BreguetRangeComp(om.ExplicitComponent):
 
         # R = (V/SFC)*LD*ln(m_total/(m_total - m_fuel))
 
-        partials['R', 'V'] = (1.0 / SFC) * LD * thelog
+        partials['R', 'V_cruise'] = (1.0 / SFC) * LD * thelog
 
         partials['R', 'SFC'] = -(V / SFC**2) * LD * thelog
 

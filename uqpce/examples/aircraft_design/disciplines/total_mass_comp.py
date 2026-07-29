@@ -1,33 +1,41 @@
 import openmdao.api as om
 import numpy as np
-#hi
+from fixed import parameters
+
 class TotalMassComp(om.ExplicitComponent):
     """
     Component for "TotalMassComp" box containing analytical derivatives
     """
     def initialize(self):
-        self.options.declare('vec_size', types=int)
+        self.options.declare('vec_size', default=1, types=int)
     
     def setup(self):
         n = self.options['vec_size']
 
-        #Local design variable
-        self.add_input('m_empty', units='kg', desc='Empty mass', shape=(n,))
+        #proposed design variables
+        #n/a
 
-        #Parameter
-        self.add_input('m_payload', units='kg', desc='Payload mass')
+        #model variable (output from other component)
+        self.add_input('m_empty', units='kg',shape=(n,))
+        self.add_input('m_fuel', units='kg', shape=(n,))
 
-        #Solver state
-        self.add_input('m_fuel', units='kg', desc='Fuel mass', shape=(n,))
+        #uncertain parameters
+        #n/a
 
-        #Output
-        self.add_output('m_total', units='kg', desc='Total mass', shape=(n,))
+        #tuning parameters
+        #n/a
+
+        #constant parameters
+        self.add_input('m_payload', val=parameters['m_payload_design'], units='kg')
+
+        #outputs
+        self.add_output('m_total', units='kg',shape=(n,))
 
     def setup_partials(self):
         n = self.options['vec_size']
         arange = np.arange(n)
         
-        self.declare_partials('m_total', ['m_empty', 'm_payload'])
+        self.declare_partials('m_total', ['m_payload'])
         self.declare_partials('m_total', ['m_empty', 'm_fuel'], rows=arange, cols=arange)
 
     def compute(self, inputs, outputs):
