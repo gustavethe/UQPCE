@@ -78,8 +78,8 @@ class CoupledDisciplines(om.Group):
         newton = self.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
         self.nonlinear_solver.options['iprint'] = 2
         self.nonlinear_solver.options['maxiter'] = 500
-        self.nonlinear_solver.options['atol'] = 1e-5
-        self.nonlinear_solver.options['rtol'] = 1e-3
+        self.nonlinear_solver.options['atol'] = 1e-8
+        self.nonlinear_solver.options['rtol'] = 1e-8
 
         line_search = newton.linesearch = om.ArmijoGoldsteinLS(bound_enforcement='vector')
         line_search.options['maxiter'] = 20
@@ -95,7 +95,7 @@ class CL_constraint(om.ExplicitComponent):
         n = self.options['vec_size']
         arange = np.arange(n)
 
-        self.add_input('CL', shape=(n,))
+        self.add_input('CL', units="unitless", shape=(n,))
 
         self.add_input('CL_target', val=0.53)
 
@@ -103,6 +103,7 @@ class CL_constraint(om.ExplicitComponent):
 
         # should be identity matrix
         self.declare_partials('CL_constraint', 'CL', rows=arange, cols=arange)
+        self.declare_partials('CL_constraint', 'CL_target')
 
     def compute(self, inputs, outputs):
 
@@ -114,6 +115,7 @@ class CL_constraint(om.ExplicitComponent):
     def compute_partials(self, inputs, partials):
 
         partials['CL_constraint', 'CL'] = -1
+        partials['CL_constraint', 'CL_target'] = 1
 
 class WingLoad_constraint(om.ExplicitComponent):
     

@@ -10,13 +10,13 @@ from helpers import plot_objective, plot_coefficients, get_values
 
 from disciplines.BreguetRange import BreguetRangeComp
 from disciplines.aero import AeroComp
-from disciplines.total_mass_comp import TotalMassComp
+from disciplines_JAX.total_mass_comp import TotalMassComp
 from disciplines_JAX.propulsion import PropulsionComp
-# from disciplines_JAX.engine_weight import EngineWeightComp
 from disciplines.weight import WeightsComp
-from disciplines.weight import EngineWeightComp
-from disciplines.doc import DOC
-from disciplines.dpm import Dpm
+# from disciplines.weight import EngineWeightComp
+from disciplines_JAX.engine_weight import EngineWeightComp
+from disciplines_JAX.doc import DOC
+from disciplines_JAX.dpm import Dpm
 
 from fixed import parameters
 
@@ -90,9 +90,9 @@ class CoupledDisciplines(om.Group):
         self.nonlinear_solver.options['atol'] = 1e-5
         self.nonlinear_solver.options['rtol'] = 1e-3
 
-        line_search = newton.linesearch = om.ArmijoGoldsteinLS(bound_enforcement='vector')
-        line_search.options['maxiter'] = 20
-        line_search.options['print_bound_enforce'] = True
+        # line_search = newton.linesearch = om.ArmijoGoldsteinLS(bound_enforcement='vector')
+        # line_search.options['maxiter'] = 20
+        # line_search.options['print_bound_enforce'] = True
         self.linear_solver = om.DirectSolver()
 
 class CL_constraint(om.ExplicitComponent):
@@ -359,138 +359,138 @@ def main():
     determ_prob.model.set_input_defaults('SFC_tech', val=0.0)
 
     optimal = deterministic_optimization(determ_prob)
-    print(optimal['AR'])
+    print(optimal)
     
-    # #---------------------------------------------------------------------------
-    # #                               Input Files
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                               Input Files
+    #---------------------------------------------------------------------------
 
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
-    # relative_yaml = 'input.yaml'
-    # relative_matrix = 'run_matrix_generated.dat'
-    # input_file = os.path.join(script_dir, relative_yaml)
-    # matrix_file = os.path.join(script_dir, relative_matrix)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    relative_yaml = 'input.yaml'
+    relative_matrix = 'run_matrix_generated.dat'
+    input_file = os.path.join(script_dir, relative_yaml)
+    matrix_file = os.path.join(script_dir, relative_matrix)
 
-    # #---------------------------------------------------------------------------
-    # #             Setting up for UQPCE and Design Under Uncertainty
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #             Setting up for UQPCE and Design Under Uncertainty
+    #---------------------------------------------------------------------------
 
-    # (var_basis, norm_sq, resampled_var_basis, 
-    #  aleatory_cnt, epistemic_cnt, resp_cnt, 
-    #  order, variables, sig, run_matrix ) = interface.initialize(input_file, 
-    #                                                             matrix_file)
+    (var_basis, norm_sq, resampled_var_basis, 
+     aleatory_cnt, epistemic_cnt, resp_cnt, 
+     order, variables, sig, run_matrix ) = interface.initialize(input_file, 
+                                                                matrix_file)
     
-    # uncertain_prob = om.Problem()
-    # configure_subsystems(uncertain_prob,vector_size=resp_cnt)
+    uncertain_prob = om.Problem()
+    configure_subsystems(uncertain_prob,vector_size=resp_cnt)
 
-    # uncertain_prob.driver = om.ScipyOptimizeDriver()
-    # uncertain_prob.driver.options['optimizer'] = 'SLSQP'
-    # uncertain_prob.driver.options['maxiter'] = 1000
-    # uncertain_prob.driver.options['tol'] = 1e-10
-    # uncertain_prob.driver.options['disp'] = True
+    uncertain_prob.driver = om.ScipyOptimizeDriver()
+    uncertain_prob.driver.options['optimizer'] = 'SLSQP'
+    uncertain_prob.driver.options['maxiter'] = 1000
+    uncertain_prob.driver.options['tol'] = 1e-10
+    uncertain_prob.driver.options['disp'] = True
 
-    # #---------------------------------------------------------------------------
-    # #                       Add UQPCE Group to Problem
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                       Add UQPCE Group to Problem
+    #---------------------------------------------------------------------------
 
-    # probabilistic_DOC_output_list = ['DOC:resampled_responses','DOC:ci_lower',
-    #                                  'DOC:ci_upper','DOC:mean','DOC:mean_plus_var']
-    # other_output_list = generate_output_list()
-    # probabilistic_output_list = probabilistic_DOC_output_list + other_output_list
+    probabilistic_DOC_output_list = ['DOC:resampled_responses','DOC:ci_lower',
+                                     'DOC:ci_upper','DOC:mean','DOC:mean_plus_var']
+    other_output_list = generate_output_list()
+    probabilistic_output_list = probabilistic_DOC_output_list + other_output_list
 
-    # uncertain_prob.model.add_subsystem(
-    #     'UQPCE',
+    uncertain_prob.model.add_subsystem(
+        'UQPCE',
         
-    #     UQPCEGroup(significance=sig,
-    #                var_basis=var_basis,
-    #                norm_sq=norm_sq,
-    #                resampled_var_basis=resampled_var_basis,
-    #                tail='both',
-    #                epistemic_cnt=epistemic_cnt,
-    #                aleatory_cnt=aleatory_cnt,
-    #                uncert_list=['DOC','Dpm', 'm_fuel','m_empty',
-    #                             'm_engine','m_total','CL',
-    #                             'CD','SFC','CL_constraint'],
-    #                tanh_omega=1e-3,
-    #                sample_ref0=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    #                sample_ref=[5.0e4, 1e-2, 1e3, 1e3, 1e3, 1e3, 0.1, 0.1, 1e-4, 0.1]),
+        UQPCEGroup(significance=sig,
+                   var_basis=var_basis,
+                   norm_sq=norm_sq,
+                   resampled_var_basis=resampled_var_basis,
+                   tail='both',
+                   epistemic_cnt=epistemic_cnt,
+                   aleatory_cnt=aleatory_cnt,
+                   uncert_list=['DOC','Dpm', 'm_fuel','m_empty',
+                                'm_engine','m_total','CL',
+                                'CD','SFC','CL_constraint'],
+                   tanh_omega=1e-3,
+                   sample_ref0=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                   sample_ref=[5.0e4, 1e-2, 1e3, 1e3, 1e3, 1e3, 0.1, 0.1, 1e-4, 0.1]),
         
-    #     promotes_inputs=['DOC','Dpm', 'm_fuel','m_empty','m_engine',
-    #                      'm_total','CL','CD','SFC','CL_constraint'],
+        promotes_inputs=['DOC','Dpm', 'm_fuel','m_empty','m_engine',
+                         'm_total','CL','CD','SFC','CL_constraint'],
 
-    #     promotes_outputs=probabilistic_output_list
-    # )
+        promotes_outputs=probabilistic_output_list
+    )
 
-    # #---------------------------------------------------------------------------
-    # #                           Add Design Variables
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                           Add Design Variables
+    #---------------------------------------------------------------------------
 
-    # uncertain_prob.model.add_design_var('S', lower=100.0, upper=180.0, ref=124.6)
-    # uncertain_prob.model.add_design_var('AR', lower=7.0, upper=50.0, ref=9.45)
-    # uncertain_prob.model.add_design_var('V_cruise', lower=200, upper=260, ref=1)
-    # uncertain_prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
+    uncertain_prob.model.add_design_var('S', lower=100.0, upper=180.0, ref=124.6)
+    uncertain_prob.model.add_design_var('AR', lower=7.0, upper=50.0, ref=9.45)
+    uncertain_prob.model.add_design_var('V_cruise', lower=200, upper=260, ref=1)
+    uncertain_prob.model.add_design_var('SFC_tech', lower=-1, upper=1, ref=1)
 
-    # #---------------------------------------------------------------------------
-    # #                             Add Constraints
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                             Add Constraints
+    #---------------------------------------------------------------------------
 
-    # uncertain_prob.model.add_constraint('m_fuel:mean', lower=1000.0, upper=50000.0, ref=16000.0)
-    # uncertain_prob.model.add_constraint('CL:ci_lower', upper=0.4953, ref0=1, ref=2)
-    # uncertain_prob.model.add_constraint('CL:ci_upper', upper=0.5690, ref0=1, ref=2)
+    uncertain_prob.model.add_constraint('m_fuel:mean', lower=1000.0, upper=50000.0, ref=16000.0)
+    uncertain_prob.model.add_constraint('CL:ci_lower', upper=0.4953, ref0=1, ref=2)
+    uncertain_prob.model.add_constraint('CL:ci_upper', upper=0.5690, ref0=1, ref=2)
 
-    # #---------------------------------------------------------------------------
-    # #                      Add Probability-Based Objective
-    # #                       To Optimize Under Uncertainty          
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                      Add Probability-Based Objective
+    #                       To Optimize Under Uncertainty          
+    #---------------------------------------------------------------------------
 
-    # uncertain_prob.model.add_subsystem(
-    #     'variable_risk_objective', Uncertain_Objective(),
-    #     promotes_inputs=['DOC:mean', 'DOC:mean_plus_var', 'lambda'],
-    #     promotes_outputs=['DOC:mean_plus_lambda_variance']
-    # )
+    uncertain_prob.model.add_subsystem(
+        'variable_risk_objective', Uncertain_Objective(),
+        promotes_inputs=['DOC:mean', 'DOC:mean_plus_var', 'lambda'],
+        promotes_outputs=['DOC:mean_plus_lambda_variance']
+    )
 
-    # uncertain_prob.model.add_objective('DOC:mean_plus_lambda_variance', ref=1.0e5)    
+    uncertain_prob.model.add_objective('DOC:mean_plus_lambda_variance', ref=1.0e5)    
     
-    # #---------------------------------------------------------------------------
-    # #                       Compute Model Response at 
-    # #                         Deterministic Optima      
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                       Compute Model Response at 
+    #                         Deterministic Optima      
+    #---------------------------------------------------------------------------
 
-    # uncertain_prob.setup()
+    uncertain_prob.setup()
     
-    # uncertain_prob.model.set_val('lambda', 3)
+    uncertain_prob.model.set_val('lambda', 3)
     
-    # initialize(uncertain_prob, params=optimal)
+    initialize(uncertain_prob, params=optimal)
     
-    # interface.set_vals(uncertain_prob, variables, run_matrix)
+    interface.set_vals(uncertain_prob, variables, run_matrix)
 
-    # uncertain_prob.run_model()
+    uncertain_prob.run_model()
 
-    # response = get_values(uncertain_prob, copybool=True)
+    response = get_values(uncertain_prob, copybool=True)
     
-    # #---------------------------------------------------------------------------
-    # #                      Optimize DOC Under Uncertainty              
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                      Optimize DOC Under Uncertainty              
+    #---------------------------------------------------------------------------
 
-    # initialize(uncertain_prob)
+    initialize(uncertain_prob)
 
-    # uncertain_prob.run_driver()
+    uncertain_prob.run_driver()
 
-    # optimized = get_values(uncertain_prob)
+    optimized = get_values(uncertain_prob)
 
-    # #---------------------------------------------------------------------------
-    # #                  Plot Results and Compare Distributions              
-    # #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #                  Plot Results and Compare Distributions              
+    #---------------------------------------------------------------------------
 
-    # plot_objective(response, optimized)
+    plot_objective(response, optimized)
 
-    # plot_coefficients(response, optimized)
+    plot_coefficients(response, optimized)
     
-    # # plot_constraints(response, optimized)
+    # plot_constraints(response, optimized)
 
-    # # plot_mass(response, optimized)
+    # plot_mass(response, optimized)
 
-    # # plot_sfc(response, optimized)
+    # plot_sfc(response, optimized)
 
 if __name__ == "__main__":
     main()

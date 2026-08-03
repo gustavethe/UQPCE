@@ -26,7 +26,7 @@ class Dpm(om.ExplicitComponent):
         #n/a
 
         #constant parameters
-        self.add_input('N_pax', val=parameters['N_pax'])
+        self.add_input('N_pax', val=parameters['N_pax'], units='unitless')
 
         #outputs
         self.add_output('Dpm', shape=(n,))

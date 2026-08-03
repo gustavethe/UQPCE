@@ -37,11 +37,11 @@ def display_initial_guess(prob):
     print('SFC_tech:', prob.get_val('SFC_tech'))
     print('737-800 DOC estimate [$/flight]:', prob.get_val('MDA.DOC_objective.DOC'))
 
-def initialize(prob, params=parameters):
-    prob.set_val('V_cruise', params['V_cruise'])
-    prob.set_val('S', params['S'])
-    prob.set_val('AR', params['AR'])
-    prob.set_val('SFC_tech', params['SFC_tech'])
+def initialize(prob, design_params=parameters):
+    prob.set_val('V_cruise', design_params['V_cruise'])
+    prob.set_val('S', design_params['S'])
+    prob.set_val('AR', design_params['AR'])
+    prob.set_val('SFC_tech', design_params['SFC_tech'])
 
     #~~~~~tuning parameters
     prob.set_val('e_base', parameters['e_oswald_base'])
